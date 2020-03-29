@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 from subprocess import Popen
 from optparse import OptionParser
-import threading
 from datetime import date
 from time import sleep
 
@@ -35,10 +34,8 @@ def daily():
 
 
 def main():
-  parser = OptionParser()
-  parser.add_option("-d", "--daily",
-                  action="store_true", dest="daily", default=False,
-                  help="Output the data to a new file each day")
+  daily()
+              
 
 if __name__ == "__main__":
-  daily()
+  main()
