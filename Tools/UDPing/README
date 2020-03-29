@@ -1,0 +1,42 @@
+Name: 		UDPing
+
+Author: 	Huahui Wu (flashine@gmail.com)
+
+Version: 	1.0
+
+Description: 	a simple application level ping.
+		keep sending and receiving UDP packets, control-c to stop.
+		Reports similar results as regular ping except:
+		a. the TTL field is replaced by sequence number.
+		b. there is a "tSent" field representing the time when 
+		   the packet was sent out
+
+Files and how to compile: 
+		Win server - sUDPingWin.cpp, Use Visual C++ .NET, 
+			add wsock32.lib when link.
+		Win client - cUDPingWin.cpp XGetopt.h XGetopt.cpp, Use 
+			Visual C++ .NET, add wsock32.lib when link.
+		Linux server - sUDPingLnx.cpp
+			"g++ sUDPingLnx.cpp -o sUDPingLnx"
+		Linux client - cUDPingLnx.cpp
+			"g++ cUDPingLnx.cpp -o cUDPingLnx -lpthread"
+		Windows Executables - sUDPingWin.exe cUDPingWin.exe
+			Just copy to Windows machines and run them
+		
+How to run: 	server - "sUDPingWin.exe portnumber" in Windows platform
+			or "sUDPingLnx portnumber" in Linux platform
+		client - "cUDPingWin.exe -p portnumber -h hostname 
+			-s packet_size_in_bytes -n packet_number_per_sec"
+			in Windows or "cUDPingLnx ..." in Linux platform
+		where the default values are:
+			hostname	:	localhost
+			portnumber	:	7979
+			packet_size	:	16 (12 in Linux)
+			packet_number   :	5
+
+
+
+
+
+
+
