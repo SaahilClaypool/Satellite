@@ -5,7 +5,13 @@ matplotlib.use('AGG')
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import glob
 
+
+def plot_each_day(folder="./data/"):
+  for file in glob.glob(f"{folder}/*.txt"):
+    df = parse_file(file)
+    plot_pings(df, "graphs/" + file.split("/")[-1].replace(".txt", ".png"))
 
 def parse_line(line):
   items = line.split(':')[-1]
@@ -30,19 +36,18 @@ def parse_file(filename="./data/ping_trace.txt"):
         print(ex)
         break
   df = pd.DataFrame(lines)
-  print(df)
   return df
 
-def plot_pings(df):
-  plt.plot(df['tSent'] / 1000, df['rtt'])
+def plot_pings(df, output_file="./graphs/ping.png"):
+  plt.scatter(df['tSent'] / 1000, df['rtt'], alpha=0.05)
   plt.xlabel("seconds")
   plt.ylabel("rtt (ms)")
   plt.ylim(bottom=0)
-  plt.savefig('graphs/ping.png')
+  plt.savefig(output_file)
+  plt.close()
 
 def main():
-  df = parse_file()
-  plot_pings(df)
+  plot_each_day()
 
 if __name__ == "__main__":
     main()
