@@ -14,6 +14,7 @@ from subprocess import Popen
 import subprocess
 from time import sleep
 import os
+import pandas as pd
 
 def run_command(command, user="", host=""):
   """
@@ -36,6 +37,16 @@ def run_command(command, user="", host=""):
   proc = Popen(command, shell=True)
   return proc
 
+def run_all(commands):
+  procs = []
+  for command in commands:
+    procs.append(run_command(*command))
+  
+  for proc in procs:
+    proc.wait()
+
+
+
 
 def run_iperf(host="mlc1.cs.wpi.edu", seconds=300, port=5201):
   command = f"iperf3 -c {host} -t {seconds} -R"
@@ -45,7 +56,7 @@ def run_tcpdump(filename='./data/pcap.pcap', port=5201, user="", host=""):
   command = f"sudo tcpdump -i eno2 -s 96 port 5201 -w {filename}"
   return run_command(command, user, host)
 
-def run_tshark(pcap_file='./data/pcap.pcap', outout_file='./data/csv.csv', user="", host=""):
+def run_tshark(pcap_file='./data/pcap.pcap', output_file='./data/csv.csv', user="", host=""):
   """
   TODO this is optional
   """
@@ -58,17 +69,35 @@ def run_tshark(pcap_file='./data/pcap.pcap', outout_file='./data/csv.csv', user=
     -e eth.dst  \
     -e ip.src  \
     -e ip.dst  \
+    -e tcp.srcport \
+    -e tcp.dstport \
     -e ip.proto  \
     -E header=y  \
     -E separator=,  \
     -E quote=d  \
-    -E occurrence=f
+    -E occurrence=f \
+    > {output_file}
     """
   return run_command(command, user, host)
 
+def parse_csv(csv_file='./data/csv.csv'):
+  """
+  return pandas version of the csv
+  """
+  return pd.read_csv(csv_file)
+
+def tune_tc(algorithm="cubic", wmem_send_size=8388608, host="mlc1.cs.wpi.edu", user=""):
+  command = f"\
+sudo sysctl -w net.ipv4.tcp_mem='{wmem_send_size} {wmem_send_size} {wmem_send_size}' && \
+sudo sysctl -w net.ipv4.tcp_wmem='{wmem_send_size} {wmem_send_size} {wmem_send_size}' && \
+sudo sysctl -w net.ipv4.tcp_congestion_control='{algorithm}' \
+"
+  return run_command(command, user, host).wait()
+
+
 def graph_data(pcap="./data/pcap.pcap", output_dir="graphs/"):
   run_command(f"tcptrace -N -R -T  --output_dir={output_dir} {pcap}").wait()
-  cur_dir = os.getcwd();
+  cur_dir = os.getcwd()
   os.chdir(output_dir)
   for f in os.listdir():
     filename, extension = os.path.splitext(f)
@@ -83,20 +112,39 @@ def graph_data(pcap="./data/pcap.pcap", output_dir="graphs/"):
 
   os.chdir(cur_dir)
 
+def run_wmem_test(wmem=8388608):
+  graph_dir = f'./graphs/wmem_{wmem}/'
+  if not os.path.exists(graph_dir):
+    os.mkdir(graph_dir)
+
+  pcap_file = f'./data/pcap_{wmem}.pcap'
+
+  tune_tc(host="mlc1.cs.wpi.edu", wmem_send_size=wmem)
+
+  tcpdump = run_tcpdump(filename=pcap_file)
+  sleep(5)
+
+  iperf = run_iperf(seconds=300)
+  print('started iperf')
+  iperf.wait()
+  print('iperf Done')
+
+  tcpdump.send_signal(2)
+  sleep(1)
+  print('wrote pcap')
+
+  # graph_data(pcap_file, graph_dir)
+  
+
 def main():
   global MOCK
   MOCK = False
-  # tcpdump = run_tcpdump()
-  # sleep(10)
-  # iperf = run_iperf(seconds=30)
-  # print('started iperf')
-  # iperf.wait()
-  # print('iperf Done')
-  # sleep(1)
-  # tcpdump.send_signal(2)
-  # sleep(1)
-  # print('wrote pcap')
-  graph_data()
+
+  # run_tshark().wait()
+  run_wmem_test(wmem=0.5 * 360000000) # I think this is roughly 1 bdp...
+  run_wmem_test(wmem=360000000)
+  run_wmem_test(wmem=2 * 360000000)
+  run_wmem_test(wmem=4 * 360000000)
 
 
 if __name__ == "__main__":
