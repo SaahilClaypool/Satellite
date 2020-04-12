@@ -10,6 +10,11 @@ Will do the following:
 """
 MOCK = False
 
+MLC1 = '130.215.28.30'
+SENDER = MLC1
+GLOMMA = '192.168.1.102'
+RECEIVER = GLOMMA
+
 from subprocess import Popen
 import subprocess
 from time import sleep
@@ -72,6 +77,7 @@ def run_tshark(pcap_file='./data/pcap.pcap', output_file='./data/csv.csv', user=
     -e tcp.srcport \
     -e tcp.dstport \
     -e ip.proto  \
+    -e frame.time \
     -E header=y  \
     -E separator=,  \
     -E quote=d  \
@@ -80,11 +86,33 @@ def run_tshark(pcap_file='./data/pcap.pcap', output_file='./data/csv.csv', user=
     """
   return run_command(command, user, host)
 
+def select_data_flow(groups):
+  max_packets = 0
+  max_group = []
+  for _name, group in groups:
+    group = group.reset_index()
+    packets = len(group.index)
+    if packets > max_packets:
+      max_packets = packets
+      max_group = group
+  return max_group
+
 def parse_csv(csv_file='./data/csv.csv'):
   """
   return pandas version of the csv
   """
-  return pd.read_csv(csv_file)
+  df =  pd.read_csv(csv_file).dropna()
+
+  group_tuple = ["ip.src", "ip.dst", "tcp.srcport", "tcp.dstport"] 
+
+  sender_traffic = df[df['ip.src'] == SENDER].groupby(group_tuple)
+  sender_flow = select_data_flow(sender_traffic)
+
+  receiver = df[df['ip.src'] == RECEIVER].groupby(group_tuple)
+  receiver_flow = select_data_flow(receiver)
+
+  return (sender_flow, receiver_flow)
+
 
 def tune_tc(algorithm="cubic", wmem_send_size=8388608, host="mlc1.cs.wpi.edu", user=""):
   command = f"\
@@ -141,7 +169,7 @@ def main():
   MOCK = False
 
   # run_tshark().wait()
-  run_wmem_test(wmem=0.5 * 360000000) # I think this is roughly 1 bdp...
+  run_wmem_test(wmem=int(0.5 * 360000000)) # I think this is roughly 1 bdp...
   run_wmem_test(wmem=360000000)
   run_wmem_test(wmem=2 * 360000000)
   run_wmem_test(wmem=4 * 360000000)
