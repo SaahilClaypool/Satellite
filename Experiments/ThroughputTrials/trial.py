@@ -5,13 +5,14 @@ import time
 
 BDP = 65625000
 
-cmd.MOCK = False
+cmd.MOCK = True
 
 class Tc:
     def __init__(self, cc='cubic', win=BDP, host=""):
         self.cc = cc
         self.win = BDP
         self.host = host
+        self.time = 90
 
     def cmd(self):
         win, cc = self.win, self.cc
@@ -34,6 +35,7 @@ def sleep(seconds=1):
 
 
 class Trial:
+    time = 90
     def __init__(self, name='experiment', dir='.', local='glomma', remote='mlc1.cs.wpi.edu'):
         self.name = name
         self.dir = dir
@@ -54,7 +56,7 @@ class Trial:
 
 
     def _start_udp_ping(self):
-        remote_cmd = "~/.local/bin/sUDPingLnx"
+        remote_cmd = "~/.local/bin/sUDPingLnx &"
         cmd.run_command(remote_cmd, host=self.remote)
 
         sleep()
@@ -68,18 +70,35 @@ class Trial:
         cmd.run_command(kill_cmd).wait()
         cmd.run_command(kill_cmd, host=self.remote).wait()
 
-    def start(self, time=90):
+    def _start_iperf(self, remote_sender=True):
+        reverse = "--reverse" if remote_sender else ""
+        iperf_server = f"iperf3 --server"
+        local_iperf = f"iperf3 -c {self.remote} {reverse} -t {self.time} -p 5201"
+        cmd.run_command(iperf_server, host=self.remote).wait()
+        cmd.run_command(local_iperf).wait()
+
+    def start_tcpdump(self):
+        pass
+
+
+    def start(self, time=-1):
         """
-        0. runes tc
-        1. starts udp ping
         2. starts iperf server on remote
         3. starts tcpdump
         4. starts iperf client on local 
-        5. kills tcpdump 
         6. copies captures locally
         """
+        self.time = time if time != -1 else self.time
+        cmd.clear()
+        self._setup_tc()
         self._start_udp_ping()
-        sleep(10)
+        self._start_iperf()
+
         self._cleanup()
+        cmd.dump()
+
+    @staticmethod
+    def mock(t=True):
+        cmd.MOCK = t
 
 

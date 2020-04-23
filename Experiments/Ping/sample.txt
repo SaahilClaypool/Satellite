@@ -1,0 +1,10 @@
+hostname: mlc1.cs.wpi.edu
+Usage:
+	cUDPingLnx -p portnumber -h hostname -s packet_size_in_bytes -n packet_number_per_second
+Pinging mlc1.cs.wpi.edu with 20 bytes of data:
+
+Looking up mlc1.cs.wpi.edu...
+Reply from mlc1.cs.wpi.edu: bytes=20 rtt=687ms seq=0 tSent=0ms systemTime=1585972816151
+Reply from mlc1.cs.wpi.edu: bytes=20 rtt=722ms seq=1 tSent=0ms systemTime=1585972816151
+Reply from mlc1.cs.wpi.edu: bytes=20 rtt=764ms seq=2 tSent=200ms systemTime=1585972816351
+Reply from mlc1.cs.wpi.edu: bytes=20 rtt=827ms seq=3 tSent=400ms systemTime=1585972816552

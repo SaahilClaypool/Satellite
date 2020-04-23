@@ -1,26 +1,45 @@
-from subprocess import Popen
+from subprocess import Popen, DEVNULL, STDOUT
 
 
 MOCK = False
 
-def run_command(command, user="", host=""):
+COMMANDS = []
+
+def run_command(command, host="", wait_remote=False):
   """
   timeout = 0 to wait forever
   return proc handle
   """
-  # test
   prefix = ""
   if (len(host)):
-    prefix = f"{user}@" if len(user) > 0 else ""
+    command = f"screen -d -m {command}"
     command = command.replace('"', '\\"')
     command = f'ssh {prefix}{host} "{command}"'
 
+  stdout = DEVNULL
 
   global MOCK
   if(MOCK):
     print("would run:", command)
-    return Popen("echo")
+    return Popen("echo", stderr=stdout)
 
   print(command)
-  proc = Popen(command, shell=True)
+
+  global COMMANDS
+  COMMANDS.append(command)
+
+  proc = Popen(command, shell=True, stdout=stdout)
   return proc
+
+def dump():
+  global COMMANDS
+  print('\n-----------------ALL COMMANDS----------------')
+
+  for c in COMMANDS:
+    print(c)
+
+  print('\n-----------------END COMMANDS----------------')
+
+def clear():
+  global COMMANDS
+  COMMANDS.clear()

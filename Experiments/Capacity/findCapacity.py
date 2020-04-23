@@ -51,15 +51,37 @@ def run_all(commands):
     proc.wait()
 
 
-
-
 def run_iperf(host="mlc1.cs.wpi.edu", seconds=300, port=5201):
   command = f"iperf3 -c {host} -t {seconds} -R"
   return run_command(command)
 
-def run_tcpdump(filename='./data/pcap.pcap', port=5201, user="", host=""):
-  command = f"sudo tcpdump -i eno2 -s 96 port 5201 -w {filename}"
+def run_tcpdump(filename='./data/pcap.pcap', port=5201, device="eno2", user="", host=""):
+  """
+  mlc1 uses ens3
+  """
+  command = f"sudo tcpdump -Z $USER -i {device} -s 96 port 5201 -w {filename}" # will drop permissions with -Z
   return run_command(command, user, host)
+
+def kill_tcpdump(user="", host=""):
+  command = f"pkill tcpdump"
+  return run_command(command, user, host)
+
+
+def copy_pcap(filename="./data/pcap", output_folder="./data", user="", host=""):
+  cp = "cp"
+  if (len(user) > 0):
+    user+="@"
+  if (len(host) > 0):
+    cp = "scp"
+    host += ":"
+
+  command = f"{cp} {user}{host}{filename} {output_folder}"
+  global MOCK
+  if MOCK:
+    print(f"would run: {command}")
+  else:
+    Popen(command, shell=True).wait()
+
 
 def run_tshark(pcap_file='./data/pcap.pcap', output_file='./data/csv.csv', user="", host=""):
   """
@@ -114,10 +136,12 @@ def parse_csv(csv_file='./data/csv.csv'):
   return (sender_flow, receiver_flow)
 
 
-def tune_tc(algorithm="cubic", wmem_send_size=8388608, host="mlc1.cs.wpi.edu", user=""):
+def tune_tc(algorithm="cubic", tcp_mem_size=8388608, host="mlc1.cs.wpi.edu", user=""):
+  tcp_mem_size = int(tcp_mem_size)
   command = f"\
-sudo sysctl -w net.ipv4.tcp_mem='{wmem_send_size} {wmem_send_size} {wmem_send_size}' && \
-sudo sysctl -w net.ipv4.tcp_wmem='{wmem_send_size} {wmem_send_size} {wmem_send_size}' && \
+sudo sysctl -w net.ipv4.tcp_mem='{tcp_mem_size} {tcp_mem_size} {tcp_mem_size}' && \
+sudo sysctl -w net.ipv4.tcp_wmem='{tcp_mem_size} {tcp_mem_size} {tcp_mem_size}' && \
+sudo sysctl -w net.ipv4.tcp_rmem='{tcp_mem_size} {tcp_mem_size} {tcp_mem_size}' && \
 sudo sysctl -w net.ipv4.tcp_congestion_control='{algorithm}' \
 "
   return run_command(command, user, host).wait()
@@ -140,17 +164,19 @@ def graph_data(pcap="./data/pcap.pcap", output_dir="graphs/"):
 
   os.chdir(cur_dir)
 
-def run_wmem_test(wmem=8388608):
-  graph_dir = f'./graphs/wmem_{wmem}/'
+def run_wmem_test(mem=8388608):
+  graph_dir = f'./graphs/wmem_{mem}/'
   if not os.path.exists(graph_dir):
     os.mkdir(graph_dir)
 
-  pcap_file = f'./data/pcap_{wmem}.pcap'
+  pcap_file = f'./data/pcap_{mem}.pcap'
 
-  tune_tc(host="mlc1.cs.wpi.edu", wmem_send_size=wmem)
+  tune_tc(host="mlc1.cs.wpi.edu", tcp_mem_size=mem, algorithm="bbr")
+  tune_tc(host="", tcp_mem_size=mem, algorithm="bbr")
 
   tcpdump = run_tcpdump(filename=pcap_file)
-  sleep(5)
+  mlc1_tcpdump = run_tcpdump(filename=pcap_file, device="ens3", host="mlc1")
+  sleep(10)
 
   iperf = run_iperf(seconds=300)
   print('started iperf')
@@ -158,9 +184,15 @@ def run_wmem_test(wmem=8388608):
   print('iperf Done')
 
   tcpdump.send_signal(2)
-  sleep(1)
+  mlc1_tcpdump.send_signal(2)
+  mlc1_tcpdump.send_signal(2)
+  kill_tcpdump(host="mlc1")
+  print("waiting for tcpdump to finish on remote")
+  mlc1_tcpdump.wait()
+  sleep(10)
   print('wrote pcap')
 
+  copy_pcap(pcap_file, host="mlc1", output_folder='./data/mlc1/')
   # graph_data(pcap_file, graph_dir)
   
 
@@ -168,11 +200,17 @@ def main():
   global MOCK
   MOCK = False
 
+  tput = 75 # megabits per second
+  byetes_per_megabit = 125000
+  rtt = 700.00 / 100 # seconds
+  bdp = int(tput * byetes_per_megabit * rtt) # bytes
+
   # run_tshark().wait()
-  run_wmem_test(wmem=int(0.5 * 360000000)) # I think this is roughly 1 bdp...
-  run_wmem_test(wmem=360000000)
-  run_wmem_test(wmem=2 * 360000000)
-  run_wmem_test(wmem=4 * 360000000)
+  run_wmem_test(mem=bdp)
+  # run_wmem_test(mem=int(0.5 * bdp)) 
+  # run_wmem_test(mem=2 * bdp)
+  # run_wmem_test(mem=int(0.25 * bdp)) 
+  # run_wmem_test(mem=4 * bdp)
 
 
 if __name__ == "__main__":
