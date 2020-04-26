@@ -5,7 +5,7 @@ MOCK = False
 
 COMMANDS = []
 
-def run_command(command, host="", wait_remote=False):
+def run(command, host="", wait_remote=False):
   """
   timeout = 0 to wait forever
   return proc handle
@@ -18,15 +18,15 @@ def run_command(command, host="", wait_remote=False):
 
   stdout = DEVNULL
 
+  global COMMANDS
+  COMMANDS.append(command)
+
   global MOCK
   if(MOCK):
     print("would run:", command)
     return Popen("echo", stderr=stdout)
 
   print(command)
-
-  global COMMANDS
-  COMMANDS.append(command)
 
   proc = Popen(command, shell=True, stdout=stdout)
   return proc

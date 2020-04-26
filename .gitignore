@@ -4,3 +4,5 @@ data/
 *.gpl
 *.datasets
 *.labels
+*.csv
+*.pyc
