@@ -8,7 +8,14 @@ BDP = 65625000
 
 cmd.MOCK = True
 
-MLC1_DEVICE = "ens3"
+# TODO: all machines seem to use the same interface name, so we don't need this
+devices = {
+    "mlc1": "ens3",
+    "mlc2": "ens3",
+    "mlc3": "ens3",
+}
+
+REMOTE_DEVICE = "ens3"
 LOCAL_DEVICE = "eno2"
 
 
@@ -19,7 +26,6 @@ class Tc:
         self.host = host
         self.time = 90
         self.time = 90
-        self._mock = False
 
     def cmd(self):
         win, cc = self.win, self.cc
@@ -45,13 +51,21 @@ def sleep(seconds=1):
 class Trial:
     time = 90
 
-    def __init__(self, name='experiment', dir='.', local='glomma', remote='mlc1.cs.wpi.edu'):
+    def __init__(self, name='experiment', dir='.', local='glomma', remote='mlc1', data=None):
+        """
+        args:
+            data: string of the number of bytes we should send. Ex. 1G
+        """
         self.name = name
         self.dir = dir
         self.cc = 'cubic'
         self.remote = remote
         self._local_tc = Tc()
-        self._remote_tc = Tc()
+        self._remote_tc = Tc(host=remote)
+        self.local_pcap = f"{self.data_dir()}/local.pcap"
+        self.remote_pcap = f"./{self.data_dir()}/{self.remote}.pcap"
+        self.data = data
+        self._mock = False
 
     def local_tc(self, cc='cubic', win=BDP):
         self._local_tc = Tc(cc, win)
@@ -81,7 +95,8 @@ class Trial:
     def _start_iperf(self, remote_sender=True):
         reverse = "--reverse" if remote_sender else ""
         iperf_server = f"iperf3 --server"
-        local_iperf = f"iperf3 -c {self.remote} {reverse} -t {self.time} -p 5201"
+        amount = f"-t {self.time}" if not self.data else f"-b {self.data}"
+        local_iperf = f"iperf3 -c {self.remote} {reverse} {amount} -p 5201"
         cmd.run(iperf_server, host=self.remote).wait()
         cmd.run(local_iperf).wait()
 
@@ -92,14 +107,14 @@ class Trial:
         return dir
 
     def _start_tcpdump(self):
-        local = f"sudo tcpdump -Z $USER -i {LOCAL_DEVICE} -s 96 port 5201 -w {self.data_dir()}/local.pcap"
-        remote = f"sudo tcpdump -Z $USER -i {MLC1_DEVICE} -s 96 port 5201 -w pcap.pcap"
+        local = f"sudo tcpdump -Z $USER -i {LOCAL_DEVICE} -s 96 port 5201 -w {self.local_pcap}"
+        remote = f"sudo tcpdump -Z $USER -i {REMOTE_DEVICE} -s 96 port 5201 -w pcap.pcap"
         cmd.run(remote, host=self.remote).wait()
         cmd.run(local)
         sleep(5)
 
-    def _copy_pcap(self):
-        command = f"scp {self.remote}:pcap.pcap ./{self.data_dir()}/{self.remote}.pcap"
+    def _copy_remote_pcap(self):
+        command = f"scp {self.remote}:pcap.pcap {self.remote_pcap}"
         cmd.run(command).wait()
 
     def start(self, time=-1):
@@ -108,6 +123,8 @@ class Trial:
         3. starts tcpdump
         4. starts iperf client on local 
         6. copies captures locally
+         
+        returns: [local_pcap, remote_pcap]
         """
         self.mock(self._mock)
         self.time = time if time != -1 else self.time
@@ -121,8 +138,9 @@ class Trial:
         self._start_iperf()
 
         self._cleanup()
-        self._copy_pcap()
+        self._copy_remote_pcap()
         cmd.dump()
+        return [self.local_pcap, self.remote_pcap]
 
     def mock(self, t=True):
         self._mock = t
