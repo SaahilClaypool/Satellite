@@ -1,4 +1,8 @@
 # from analyze import *
+import matplotlib
+matplotlib.use('AGG')
+import matplotlib.pyplot as plt
+
 from command import run
 from datetime import timedelta
 from glob import glob
@@ -6,10 +10,6 @@ from os import path
 import numpy as np
 import os
 import pandas as pd
-
-import matplotlib
-matplotlib.use('AGG')
-import matplotlib.pyplot as plt
 
 
 from pylab import rcParams
@@ -25,6 +25,9 @@ RECEIVER = LOCAL
 
 def all_pcaps(data_dir=DATA_DIR):
     for dir in glob(f"{data_dir}/*"):
+        if (not path.isdir(dir)):
+            continue
+
         local = glob(f"{dir}/local.pcap")
         remote = [f for f in filter(lambda fname: not "local" in fname,
                                     glob(f"{dir}/*"))]
@@ -111,7 +114,9 @@ def summary(df, directory=None):
     host, protocol = parse_directory(directory)
 
     if df.empty:
-        return {}, 0, 0
+        return {}, 0, 0, 0
+
+    start_time = df['frame.time'][0]
 
     total = lambda key: df[key].max() - df[key].min()
 
@@ -149,7 +154,7 @@ def summary(df, directory=None):
         with open(f"{directory}/summary.txt", 'a') as outfile:
             outfile.write(summary)
 
-    return quantiles, host, protocol
+    return quantiles, host, protocol, start_time
 
 
 def analyze(local, remote, dir):
@@ -170,15 +175,31 @@ def analyze(local, remote, dir):
 def main():
     throughputs = []
     for local, remote, dir in all_pcaps():
-        quantiles, host, protocol = analyze(local, remote, dir)[0]
+        quantiles, host, protocol, start_time = analyze(local, remote, dir)[0]
         quantiles['host'] = host
         quantiles['protocol'] = protocol
+        quantiles['start_time'] = start_time
         throughputs.append(quantiles)
 
     df = pd.DataFrame(throughputs)
     df.to_csv(f"{DATA_DIR}/quantiles.csv")
-    df.boxplot()
-    plt.savefig(f"{DATA_DIR}/big_box.png")
+
+def retrofit_times(directory):
+    """
+    doesn't give good data...
+    """
+    directory = './data/2020-05-05/'
+    start_times = []
+    dirs = [dir for (_, _, dir) in all_pcaps()]
+    csvfile = f'{directory}/quantiles.csv'
+    quantiles_df = pd.read_csv(csvfile)
+    for d in dirs:
+        data_df = pd.read_csv(f'{d}/local.csv', nrows=2)
+        start_time = data_df['frame.time'][0]
+        start_times.append(start_time)
+
+    quantiles_df['start_time'] = start_times
+    quantiles_df.to_csv(csvfile)
 
 if __name__ == "__main__":
     main()
