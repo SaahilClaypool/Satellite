@@ -1,0 +1,1 @@
+{"df":{"class":["data.frame"],"type":"list","length":11,"str":"'data.frame':\t100 obs. of  11 variables:","names":["frame.number","frame.time_epoch","eth.src","eth.dst","ip.src","ip.dst","tcp.srcport","tcp.dstport","tcp.seq","ip.proto","frame.time"]}}

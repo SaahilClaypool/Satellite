@@ -41,6 +41,7 @@ def analyze_summary():
         plot_cdf(df, column)
 
 
+    plt.close()
     if 'start_time' in df.keys():
         for protocol, data in df.groupby('protocol'):
             plt.scatter(data.index, data['mean'], label=protocol)
@@ -88,6 +89,14 @@ def analyze_summary():
 
     df.boxplot(column=['0.25'], by='protocol')
     plt.savefig(f"{DATA_DIR}/25_box_protocol.png")
+    plt.close()
+
+    df.boxplot(column=['0.1'], by='protocol')
+    plt.savefig(f"{DATA_DIR}/01_box_protocol.png")
+    plt.close()
+
+    df.boxplot(column=['0'], by='protocol')
+    plt.savefig(f"{DATA_DIR}/00_box_protocol.png")
     plt.close()
 
     df.boxplot(by='host')
