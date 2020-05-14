@@ -12,12 +12,33 @@ rcParams['figure.figsize'] = 10, 8
 DATA_DIR = './data/2020-05-09/'
 
 
+def plot_cdf(df, column='mean'):
+    plt.close()
+
+    for protocol, data in df.groupby('protocol'):
+        sorted_throughput = data[column].sort_values().reset_index()
+        plt.plot(sorted_throughput[column], sorted_throughput.index /
+                sorted_throughput[column].count() * 100, label=protocol)
+
+    plt.legend()
+    plt.ylabel("Percent")
+    plt.xlabel(f"{column} throughput")
+    plt.title(f"CDF of {column} throughput")
+    plt.savefig(f"{DATA_DIR}/cdf_{column}.png")
+
+
+
 def analyze_summary():
     fname = f"{DATA_DIR}/quantiles.csv"
     df = pd.read_csv(fname, index_col=0).dropna()
     df['start_time'] = pd.to_datetime(df['start_time'])
     df = df.set_index('start_time').sort_index()
     df['start_time'] = df.index
+
+    columns = ['0.1', '0.5', '0.75', 'mean']
+    
+    for column in columns:
+        plot_cdf(df, column)
 
 
     if 'start_time' in df.keys():
