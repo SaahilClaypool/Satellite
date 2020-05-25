@@ -1,24 +1,25 @@
 # from analyze import *
 import matplotlib
 matplotlib.use('AGG')
-import matplotlib.pyplot as plt
-
-from command import run
-from datetime import timedelta
-from glob import glob
-from os import path
-import numpy as np
-import os
-import feather
-import pandas as pd
-
 
 from pylab import rcParams
+import pandas as pd
+import feather
+import os
+import numpy as np
+from os import path
+from glob import glob
+from datetime import timedelta
+from command import run
+import pdb
+import matplotlib.pyplot as plt
+
+
 rcParams['figure.figsize'] = 10, 8
 
 
-
 DATA_DIR = './data/2020-05-09/'
+# DATA_DIR = './data/pcc'
 
 LOCAL = '192.168.1.102'
 RECEIVER = LOCAL
@@ -31,19 +32,33 @@ def all_pcaps(data_dir=DATA_DIR):
 
         local = glob(f"{dir}/local.pcap")
         remote = [f for f in filter(lambda fname: not "local" in fname,
-                                    glob(f"{dir}/*"))]
+                                    glob(f"{dir}/*.pcap"))]
         remote = remote[0] if remote else None
         local = local[0] if local else None
 
         yield((local, remote, dir))
 
-def pcap_to_csv(pcap_file='./data/pcap.pcap', reparse=True):
-    """
-    TODO this is optional
-    """
-    output_file = path.splitext(pcap_file)[0] + '.csv'
 
-    command = f"""
+def reparse_all():
+    pcaps = [local for local, _, _ in all_pcaps()]
+
+    procs = []
+    for pcap_file in pcaps:
+        output_file = path.splitext(pcap_file)[0] + '.csv'
+
+        if path.exists(output_file):
+            os.remove(output_file)
+        
+        print('parsing ', pcap_file)
+        proc = run(tshark_command(pcap_file, output_file))
+        procs.append((output_file, proc))
+
+    for name, proc in procs:
+        print('waiting for ', name)
+        proc.wait()
+
+def tshark_command(pcap_file, output_file):
+    return f"""
     tshark -r {pcap_file} \
         -T fields  \
         -e frame.number  \
@@ -64,6 +79,17 @@ def pcap_to_csv(pcap_file='./data/pcap.pcap', reparse=True):
         -E occurrence=f \
         > {output_file}
         """
+
+
+
+def pcap_to_csv(pcap_file='./data/pcap.pcap', reparse=True):
+    """
+    TODO this is optional
+    """
+    output_file = path.splitext(pcap_file)[0] + '.csv'
+
+    command = tshark_command(pcap_file, output_file)
+
     if reparse or not path.exists(output_file):
         run(command).wait()
     return output_file
@@ -80,11 +106,13 @@ def select_data_flow(groups):
             max_group = group
     return max_group
 
+
 def update_dataframe(df, filename):
     base, _ext = path.splitext(filename)
     feather_file = base + '.feather'
     feather.write_dataframe(df, feather_file)
     return df
+
 
 def load_dataframe(filename):
     """
@@ -98,15 +126,18 @@ def load_dataframe(filename):
         return feather.read_dataframe(feather_file)
     else:
         df = pd.read_csv(filename)
-        df['time'] = pd.to_datetime(df['frame.time'], infer_datetime_format=True)
+        df['time'] = pd.to_datetime(
+            df['frame.time'], infer_datetime_format=True)
         feather.write_dataframe(df, feather_file)
         return df
+
 
 def parsed_filenames(filename):
     base, _ext = path.splitext(filename)
     receiver_path = base + '_receiver.feather'
     sender_path = base + '_sender.feather'
     return sender_path, receiver_path
+
 
 def parse_csv(filename):
     """
@@ -118,7 +149,6 @@ def parse_csv(filename):
         receiver_flow = feather.read_dataframe(receiver_path)
         sender_flow = feather.read_dataframe(sender_path)
         return (sender_flow, receiver_flow)
-
 
     df = load_dataframe(filename).dropna()
     df = df.set_index('frame.time').sort_index()
@@ -134,6 +164,7 @@ def parse_csv(filename):
     feather.write_dataframe(receiver_flow, receiver_path)
 
     return (sender_flow, receiver_flow)
+
 
 def parse_directory(directory):
     """
@@ -157,7 +188,7 @@ def summary(df, directory=None):
 
     start_time = df['frame.time'][0]
 
-    total = lambda key: df[key].max() - df[key].min()
+    def total(key): return df[key].max() - df[key].min()
 
     total_time = total('time')
     total_bytes = total('tcp.seq')
@@ -172,14 +203,13 @@ def summary(df, directory=None):
         .1,
         0.25,
         0.5,
-        0.75, 
+        0.75,
         0.9,
         1.0
     ]
 
     quantiles = dict([(str(q), mbps.quantile(q)) for q in quantile_cutoffs])
     quantiles["mean"] = throughput_mbps
-
 
     if directory:
         summary = f"""\
@@ -204,23 +234,37 @@ def analyze(local, remote, dir):
     return [summary(local_sender_flow, dir),
             # summary(local_receiver_flow, dir),
             None,
-            # summary(remote_sender_flow, dir), 
-            None, 
+            # summary(remote_sender_flow, dir),
+            None,
             # summary(remote_receiver_flow, dir)]
             None]
 
 
-def main():
+def main(DATA_DIR=DATA_DIR):
     throughputs = []
+    timeslices = []
+    i = 0
     for local, remote, dir in all_pcaps():
+        print (f"{i}: {local}, {remote}")
+        i += 1
+        if remote == None:
+            continue
         quantiles, host, protocol, start_time = analyze(local, remote, dir)[0]
         quantiles['host'] = host
         quantiles['protocol'] = protocol
         quantiles['start_time'] = start_time
         throughputs.append(quantiles)
 
+        ts = timeslice(local)
+        timeslices.append(pd.DataFrame(ts))
+
     df = pd.DataFrame(throughputs)
     df.to_csv(f"{DATA_DIR}/quantiles.csv")
+
+    ts = pd.concat(timeslices)
+    ts.to_csv(f"{DATA_DIR}/timeslices.csv")
+
+    pdb.set_trace() # TODO: remove this, blocks at end of main
 
 
 def timeslice(filename):
@@ -234,22 +278,20 @@ def timeslice(filename):
     num_objects = 100
     times = []
     base_time = sender.time.min()
+    host, protocol = parse_directory(dirname)
 
     for i in range(num_objects):
         bytes_to_download = (i + 1) * (gig / num_objects)
-        time_to_download = sender[sender['tcp.seq'] > bytes_to_download].iloc[0].time - base_time
-        times.append({ 'file_size': bytes_to_download, 'time': time_to_download })
+        time_to_download = sender[sender['tcp.seq'] >
+                                  bytes_to_download].iloc[0].time - base_time
+        times.append({
+            'file_size': bytes_to_download, 'time': time_to_download, 'protocol': protocol, 'host': host
+        })
 
     df = pd.DataFrame(times)
     df.to_feather(dirname + '/timeslice.feather')
+    return df
 
-    plt.close()
-    plt.plot(df.file_size / gig, df.time * 1e-9)
-    plt.xlabel('Download gig')
-    plt.ylabel('Time (seconds)')
-    plt.savefig(dirname + '/slice.png')
-
-    print(times)
 
 def retrofit_times(directory):
     """
@@ -267,6 +309,7 @@ def retrofit_times(directory):
 
     quantiles_df['start_time'] = start_times
     quantiles_df.to_csv(csvfile)
+
 
 if __name__ == "__main__":
     main()

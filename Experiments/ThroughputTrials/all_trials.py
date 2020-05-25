@@ -19,7 +19,7 @@ def all_trials_main():
         "pcc"
     ]
 
-    dir = date.today().strftime("%Y-%m-%d")
+    dir = 'data/' + date.today().strftime("%Y-%m-%d")
     if not os.path.exists(dir):
         os.makedirs(dir)
     # roughly 24 hours

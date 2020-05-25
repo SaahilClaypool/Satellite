@@ -3,6 +3,7 @@
 import command as cmd
 import time
 import os
+import traceback
 
 BDP = 65625000
 
@@ -38,7 +39,7 @@ class Tc:
         return command
 
     def setup_tc(self):
-        cmd.run(self.cmd(), host=self.host)
+        return cmd.run(self.cmd(), host=self.host)
 
 
 def sleep(seconds=1):
@@ -76,7 +77,7 @@ class Trial:
 
     def _setup_tc(self):
         self._local_tc.setup_tc()
-        self._remote_tc.setup_tc()
+        self._remote_tc.setup_tc().wait()
 
     def _start_udp_ping(self):
         remote_cmd = "~/.local/bin/sUDPingLnx"
@@ -144,10 +145,11 @@ class Trial:
             cmd.dump()
             return [self.local_pcap, self.remote_pcap]
         except:
-            print(f"ERROR: failed to finish experiemnt for directory {self.dir}")
+            traceback.print_exc()
+            print(f"ERROR: failed to finish experiemnt for directory {self.data_dir()}")
             self._cleanup()
         finally:
-            print(f"finished with {self.dir}")
+            print(f"finished with {self.data_dir()}")
 
     def get_pcaps(self):
         return [self.local_pcap, self.remote_pcap]
