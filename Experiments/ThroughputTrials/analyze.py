@@ -1,18 +1,17 @@
 # from analyze import *
+import matplotlib.pyplot as plt
+import pdb
+from command import run
+from datetime import timedelta
+from glob import glob
+from os import path
+import numpy as np
+import os
+import feather
+import pandas as pd
+from pylab import rcParams
 import matplotlib
 matplotlib.use('AGG')
-
-from pylab import rcParams
-import pandas as pd
-import feather
-import os
-import numpy as np
-from os import path
-from glob import glob
-from datetime import timedelta
-from command import run
-import pdb
-import matplotlib.pyplot as plt
 
 
 rcParams['figure.figsize'] = 10, 8
@@ -48,18 +47,25 @@ def reparse_all():
 
         if path.exists(output_file):
             os.remove(output_file)
-        
-        print('parsing ', pcap_file)
+
+        print('parsing pcap ', pcap_file)
         proc = run(tshark_command(pcap_file, output_file))
         procs.append((output_file, proc))
+
+        if (len(procs) > 4):
+            print("waiting for current 4 to finish")
+            for output_file, proc in procs:
+                proc.wait()
+            procs.clear()
 
     for name, proc in procs:
         print('waiting for ', name)
         proc.wait()
 
+
 def tshark_command(pcap_file, output_file):
     return f"""
-    tshark -r {pcap_file} \
+    nice tshark -r {pcap_file} \
         -T fields  \
         -e frame.number  \
         -e frame.time_epoch  \
@@ -81,8 +87,7 @@ def tshark_command(pcap_file, output_file):
         """
 
 
-
-def pcap_to_csv(pcap_file='./data/pcap.pcap', reparse=True):
+def pcap_to_csv(pcap_file='./data/pcap.pcap', reparse=False):
     """
     TODO this is optional
     """
@@ -91,6 +96,7 @@ def pcap_to_csv(pcap_file='./data/pcap.pcap', reparse=True):
     command = tshark_command(pcap_file, output_file)
 
     if reparse or not path.exists(output_file):
+        print(f"regenerating {output_file}")
         run(command).wait()
     return output_file
 
@@ -114,7 +120,7 @@ def update_dataframe(df, filename):
     return df
 
 
-def load_dataframe(filename):
+def load_dataframe(filename, reparse=False):
     """
     opens csvfile and writes out .feather file
 
@@ -122,9 +128,10 @@ def load_dataframe(filename):
     """
     base, _ext = path.splitext(filename)
     feather_file = base + '.feather'
-    if (path.isfile(feather_file)):
+    if (path.isfile(feather_file) and not reparse):
         return feather.read_dataframe(feather_file)
     else:
+        print(f"regenerating feather file for {filename}")
         df = pd.read_csv(filename)
         df['time'] = pd.to_datetime(
             df['frame.time'], infer_datetime_format=True)
@@ -139,18 +146,23 @@ def parsed_filenames(filename):
     return sender_path, receiver_path
 
 
-def parse_csv(filename):
+def parse_csv(filename, reparse=False):
     """
     return pandas version of the csv
     """
     sender_path, receiver_path = parsed_filenames(filename)
 
-    if (path.isfile(receiver_path) and path.isfile(sender_path)):
+    if (path.isfile(receiver_path) and path.isfile(sender_path) and not reparse):
         receiver_flow = feather.read_dataframe(receiver_path)
         sender_flow = feather.read_dataframe(sender_path)
         return (sender_flow, receiver_flow)
 
-    df = load_dataframe(filename).dropna()
+    df = load_dataframe(filename)
+
+    # df.columns[df[.columns != 'tcp.analysis.ack_rtt']
+    requried_columns = ['frame.time', 'frame.number', 'frame.time_epoch', 'eth.src', 'eth.dst',
+                        'ip.src', 'ip.dst', 'tcp.srcport', 'tcp.dstport', 'tcp.seq', 'ip.proto', 'time']
+    df.dropna(subset=requried_columns, inplace=True)
     df = df.set_index('frame.time').sort_index()
 
     group_tuple = ["ip.src", "ip.dst", "tcp.srcport", "tcp.dstport"]
@@ -208,8 +220,13 @@ def summary(df, directory=None):
         1.0
     ]
 
-    quantiles = dict([(str(q), mbps.quantile(q)) for q in quantile_cutoffs])
-    quantiles["mean"] = throughput_mbps
+    throughput_quantiles = dict([(str(q), mbps.quantile(q))
+                                 for q in quantile_cutoffs])
+    throughput_quantiles["mean"] = throughput_mbps
+
+    rtt_quantiles = dict([(str(q), df['tcp.analysis.ack_rtt'].quantile(
+        q) * 1000) for q in quantile_cutoffs])
+    throughput_quantiles["mean"] = df['tcp.analysis.ack_rtt'].mean() * 1000
 
     if directory:
         summary = f"""\
@@ -217,43 +234,62 @@ def summary(df, directory=None):
         total time: {total_time}
         total bytes: {total_bytes}
         tp (mbps): {throughput_mbps}
-        quantiles: {quantiles}
+        throughput quantiles: {throughput_quantiles}
+        rtt quantiles: {throughput_quantiles}
         ----------------------
         """
         with open(f"{directory}/summary.txt", 'a') as outfile:
             outfile.write(summary)
 
-    return quantiles, host, protocol, start_time
+    return throughput_quantiles, rtt_quantiles, host, protocol, start_time
 
 
 def analyze(local, remote, dir):
+    should_reparse = False
+    should_reparse_feather = False
+
     print(local, remote)
-    local_csv = pcap_to_csv(local, False)
-    local_sender_flow, local_receiver_flow = parse_csv(local_csv)
-    # remote_sender_flow, remote_receiver_flow = parse_csv(local_csv)
-    return [summary(local_sender_flow, dir),
-            # summary(local_receiver_flow, dir),
+
+    local_csv = pcap_to_csv(local, reparse=should_reparse)
+    local_sender_flow, local_receiver_flow = parse_csv(
+        local_csv, reparse=should_reparse_feather)
+
+    remote_csv = pcap_to_csv(remote, reparse=should_reparse)
+    remote_sender_flow, remote_receiver_flow = parse_csv(
+        remote_csv, reparse=should_reparse_feather)
+    return [summary(local_sender_flow, dir),  # 0
+            # summary(local_receiver_flow, dir), # 1
             None,
-            # summary(remote_sender_flow, dir),
-            None,
-            # summary(remote_receiver_flow, dir)]
+            summary(remote_sender_flow, dir),  # 2
+            # None,
+            # summary(remote_receiver_flow, dir)] # 3
             None]
 
 
 def main(DATA_DIR=DATA_DIR):
     throughputs = []
+    rtts = []
     timeslices = []
     i = 0
     for local, remote, dir in all_pcaps():
-        print (f"{i}: {local}, {remote}")
+        print(f"{i}: {local}, {remote}")
         i += 1
         if remote == None:
             continue
-        quantiles, host, protocol, start_time = analyze(local, remote, dir)[0]
-        quantiles['host'] = host
-        quantiles['protocol'] = protocol
-        quantiles['start_time'] = start_time
-        throughputs.append(quantiles)
+
+        results = analyze(local, remote, dir)
+        throughput_quantiles, _, host, protocol, start_time = results[0]
+        _, rtt_quantiles, _, _, _ = results[2]
+
+        throughput_quantiles['host'] = host
+        throughput_quantiles['protocol'] = protocol
+        throughput_quantiles['start_time'] = start_time
+        throughputs.append(throughput_quantiles)
+
+        rtt_quantiles['host'] = host
+        rtt_quantiles['protocol'] = protocol
+        rtt_quantiles['start_time'] = start_time
+        rtts.append(rtt_quantiles)
 
         ts = timeslice(local)
         timeslices.append(pd.DataFrame(ts))
@@ -261,10 +297,13 @@ def main(DATA_DIR=DATA_DIR):
     df = pd.DataFrame(throughputs)
     df.to_csv(f"{DATA_DIR}/quantiles.csv")
 
+    df = pd.DataFrame(rtts)
+    df.to_csv(f"{DATA_DIR}/rtt_quantiles.csv")
+
     ts = pd.concat(timeslices)
     ts.to_csv(f"{DATA_DIR}/timeslices.csv")
 
-    pdb.set_trace() # TODO: remove this, blocks at end of main
+    # pdb.set_trace() # TODO: remove this, blocks at end of main
 
 
 def timeslice(filename):
