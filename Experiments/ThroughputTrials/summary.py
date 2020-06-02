@@ -12,7 +12,21 @@ rcParams['figure.figsize'] = 10, 8
 DATA_DIR = './data/2020-05-09/'
 
 
-def plot_cdf(df, column='mean'):
+def plot_rtt_cdf(df, column='mean'):
+    plt.close()
+
+    for protocol, data in df.groupby('protocol'):
+        sorted_rtt = data[column].sort_values().reset_index()
+        plt.plot(sorted_rtt[column], sorted_rtt.index /
+                sorted_rtt[column].count() * 100, label=protocol)
+
+    plt.legend()
+    plt.ylabel("Percent")
+    plt.xlabel(f"{column} rtt (ms)")
+    plt.title(f"CDF of {column} RTT")
+    plt.savefig(f"{DATA_DIR}/cdf_rtt_{column}.png")
+
+def plot_througput_cdf(df, column='mean'):
     plt.close()
 
     for protocol, data in df.groupby('protocol'):
@@ -28,7 +42,8 @@ def plot_cdf(df, column='mean'):
 
 
 
-def analyze_summary():
+
+def throughput_summary():
     fname = f"{DATA_DIR}/quantiles.csv"
     df = pd.read_csv(fname, index_col=0).dropna()
     df['start_time'] = pd.to_datetime(df['start_time'])
@@ -38,7 +53,7 @@ def analyze_summary():
     columns = ['0.1', '0.5', '0.75', 'mean']
     
     for column in columns:
-        plot_cdf(df, column)
+        plot_througput_cdf(df, column)
 
 
     plt.close()
@@ -103,6 +118,30 @@ def analyze_summary():
     plt.savefig(f"{DATA_DIR}/box_machine.png")
     plt.close()
 
+def rtt_summary():
+    fname = f"{DATA_DIR}/rtt_quantiles.csv"
+    df = pd.read_csv(fname, index_col=0).dropna()
+    df['start_time'] = pd.to_datetime(df['start_time'])
+    df = df.set_index('start_time').sort_index()
+    df['start_time'] = df.index
+
+    columns = ['0.1', '0.5', '0.75']
+    
+    for column in columns:
+        plot_rtt_cdf(df, column)
+
+
+    plt.close()
+
+    df = df[['0', '0.1', '0.25', '0.5', '0.75',
+             '0.9', '1.0', 'mean', 'host', 'protocol']]
+
+    df.boxplot()
+    plt.title("RTT by quartile")
+    plt.savefig(f"{DATA_DIR}/rtt_boxplot.png")
+    plt.close()
+
 
 if __name__ == "__main__":
-    analyze_summary()
+    throughput_summary()
+    rtt_summary()

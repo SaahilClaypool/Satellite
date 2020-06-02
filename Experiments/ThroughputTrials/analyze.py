@@ -1,4 +1,6 @@
 # from analyze import *
+import matplotlib
+matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 import pdb
 from command import run
@@ -10,8 +12,6 @@ import os
 import feather
 import pandas as pd
 from pylab import rcParams
-import matplotlib
-matplotlib.use('AGG')
 
 
 rcParams['figure.figsize'] = 10, 8
@@ -275,6 +275,7 @@ def main(DATA_DIR=DATA_DIR):
         print(f"{i}: {local}, {remote}")
         i += 1
         if remote == None:
+            print('ignoring trial', i)
             continue
 
         results = analyze(local, remote, dir)
@@ -303,7 +304,7 @@ def main(DATA_DIR=DATA_DIR):
     ts = pd.concat(timeslices)
     ts.to_csv(f"{DATA_DIR}/timeslices.csv")
 
-    # pdb.set_trace() # TODO: remove this, blocks at end of main
+    pdb.set_trace() # TODO: remove this, blocks at end of main
 
 
 def timeslice(filename):
