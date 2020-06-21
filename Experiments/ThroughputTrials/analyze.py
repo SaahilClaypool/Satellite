@@ -21,8 +21,9 @@ rcParams['figure.figsize'] = 10, 8
 DATA_DIR = './data/2020-06-01/'
 # DATA_DIR = './data/pcc'
 
-LOCAL = '192.168.1.102'
-RECEIVER = LOCAL
+# LOCAL = '192.168.1.102'
+# REMOTE = '130.215.28.35'
+# RECEIVER = LOCAL
 
 
 def all_pcaps(data_dir=DATA_DIR):
@@ -168,11 +169,15 @@ def parse_csv(filename, reparse=False):
 
     group_tuple = ["ip.src", "ip.dst", "tcp.srcport", "tcp.dstport"]
 
-    sender_traffic = df[df['ip.src'] != LOCAL].groupby(group_tuple)
+    remote_prefix = "130."
+    sender_selection = df['ip.src'].str.contains(remote_prefix)
+    receiver_selection = ~sender_selection
+
+    sender_traffic = df[sender_selection].groupby(group_tuple)
     sender_flow = select_data_flow(sender_traffic)
     feather.write_dataframe(sender_flow, sender_path)
 
-    receiver = df[df['ip.src'] == RECEIVER].groupby(group_tuple)
+    receiver = df[receiver_selection].groupby(group_tuple)
     receiver_flow = select_data_flow(receiver)
     feather.write_dataframe(receiver_flow, receiver_path)
 
@@ -262,7 +267,7 @@ def summary(df, directory=None, start_bytes=0, end_bytes=1e9 * 10):
 
 def analyze(local, remote, dir):
     should_reparse = False
-    should_reparse_feather = False
+    should_reparse_feather = True
 
     print(local, remote)
 
