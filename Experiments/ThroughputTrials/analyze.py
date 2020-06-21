@@ -17,7 +17,8 @@ from pylab import rcParams
 rcParams['figure.figsize'] = 10, 8
 
 
-DATA_DIR = './data/2020-05-09/'
+# DATA_DIR = './data/2020-05-09/'
+DATA_DIR = './data/2020-06-01/'
 # DATA_DIR = './data/pcc'
 
 LOCAL = '192.168.1.102'
@@ -38,7 +39,7 @@ def all_pcaps(data_dir=DATA_DIR):
         yield((local, remote, dir))
 
 
-def reparse_all():
+def tshark_all():
     pcaps = [local for local, _, _ in all_pcaps()]
 
     procs = []
@@ -191,12 +192,27 @@ def parse_directory(directory):
     return host, protocol
 
 
-def summary(df, directory=None):
+def summary(df, directory=None, start_bytes=0, end_bytes=1e9 * 10):
+    """
+    params:
+        start_bytes: first seq to process
+        end_bytes: last byte to process. Default 10 gig (so as not to be important)
+    """
 
-    host, protocol = parse_directory(directory)
+    temp_df = df[df['tcp.seq'] >= start_bytes][df['tcp.seq'] <= end_bytes].reset_index()
+
+    if temp_df.empty:
+        temp_df = df.tail(int(len(df) / 2)).reset_index()
+
+    df = temp_df
+
+    if (directory):
+        host, protocol = parse_directory(directory)
+    else:
+        host, protocol = '', ''
 
     if df.empty:
-        return {}, 0, 0, 0
+        return {}, {}, host, protocol, 0
 
     start_time = df['frame.time'][0]
 
@@ -207,7 +223,7 @@ def summary(df, directory=None):
     throughput_mbps = (total_bytes / total_time.seconds) / 125000
 
     df['second'] = df.time.dt.minute * 60 + df.time.dt.second
-    seconds = df[df.second > (df.second.min() + 10)] .groupby('second')
+    seconds = df[df.second > df.second.min() + 1][df.second < df.second.max() - 1] .groupby('second')
     mbps = (seconds['tcp.seq'].max() - seconds['tcp.seq'].min()) / 125000
 
     quantile_cutoffs = [
@@ -238,8 +254,8 @@ def summary(df, directory=None):
         rtt quantiles: {throughput_quantiles}
         ----------------------
         """
-        with open(f"{directory}/summary.txt", 'a') as outfile:
-            outfile.write(summary)
+        # print(summary)
+
 
     return throughput_quantiles, rtt_quantiles, host, protocol, start_time
 
@@ -251,24 +267,26 @@ def analyze(local, remote, dir):
     print(local, remote)
 
     local_csv = pcap_to_csv(local, reparse=should_reparse)
-    local_sender_flow, local_receiver_flow = parse_csv(
+    local_sender_flow, _local_receiver_flow = parse_csv(
         local_csv, reparse=should_reparse_feather)
 
     remote_csv = pcap_to_csv(remote, reparse=should_reparse)
-    remote_sender_flow, remote_receiver_flow = parse_csv(
+    remote_sender_flow, _remote_receiver_flow = parse_csv(
         remote_csv, reparse=should_reparse_feather)
-    return [summary(local_sender_flow, dir),  # 0
-            # summary(local_receiver_flow, dir), # 1
-            None,
+    second_half = {"start_bytes": 1e9 / 2, "end_bytes": 1e9}
+    return [
+            summary(local_sender_flow, dir),  # 0
+            summary(local_sender_flow, dir, **second_half),
             summary(remote_sender_flow, dir),  # 2
-            # None,
-            # summary(remote_receiver_flow, dir)] # 3
-            None]
+            summary(remote_sender_flow, dir, **second_half),
+        ]
 
 
 def main(DATA_DIR=DATA_DIR):
     throughputs = []
+    steady_throughputs = []
     rtts = []
+    steady_rtts = []
     timeslices = []
     i = 0
     for local, remote, dir in all_pcaps():
@@ -280,17 +298,29 @@ def main(DATA_DIR=DATA_DIR):
 
         results = analyze(local, remote, dir)
         throughput_quantiles, _, host, protocol, start_time = results[0]
+        steady_throughput_quantiles, _, _, _, steady_start_time = results[1]
         _, rtt_quantiles, _, _, _ = results[2]
+        _, steady_rtt_quantiles, _, _, _ = results[3]
 
         throughput_quantiles['host'] = host
         throughput_quantiles['protocol'] = protocol
         throughput_quantiles['start_time'] = start_time
         throughputs.append(throughput_quantiles)
 
+        steady_throughput_quantiles['host'] = host
+        steady_throughput_quantiles['protocol'] = protocol
+        steady_throughput_quantiles['start_time'] = start_time
+        steady_throughputs.append(steady_throughput_quantiles)
+
         rtt_quantiles['host'] = host
         rtt_quantiles['protocol'] = protocol
         rtt_quantiles['start_time'] = start_time
         rtts.append(rtt_quantiles)
+
+        steady_rtt_quantiles['host'] = host
+        steady_rtt_quantiles['protocol'] = protocol
+        steady_rtt_quantiles['start_time'] = steady_start_time
+        steady_rtts.append(steady_rtt_quantiles)
 
         ts = timeslice(local)
         timeslices.append(pd.DataFrame(ts))
@@ -298,13 +328,19 @@ def main(DATA_DIR=DATA_DIR):
     df = pd.DataFrame(throughputs)
     df.to_csv(f"{DATA_DIR}/quantiles.csv")
 
+    df = pd.DataFrame(steady_throughputs)
+    df.to_csv(f"{DATA_DIR}/steady_quantiles.csv")
+
     df = pd.DataFrame(rtts)
     df.to_csv(f"{DATA_DIR}/rtt_quantiles.csv")
+
+    df = pd.DataFrame(steady_rtts)
+    df.to_csv(f"{DATA_DIR}/steady_rtt_quantiles.csv")
 
     ts = pd.concat(timeslices)
     ts.to_csv(f"{DATA_DIR}/timeslices.csv")
 
-    pdb.set_trace() # TODO: remove this, blocks at end of main
+    # pdb.set_trace() # TODO: remove this, blocks at end of main
 
 
 def timeslice(filename):

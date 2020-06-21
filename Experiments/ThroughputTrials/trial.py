@@ -5,7 +5,11 @@ import time
 import os
 import traceback
 
-BDP = 65625000
+# BDP = 65625000
+# 200 mbits * 600 ms = 
+# 200 * 125000 * .6 = 15000000
+BDP = 15000000
+WMEM = BDP * 4
 
 cmd.MOCK = True
 
@@ -21,9 +25,9 @@ LOCAL_DEVICE = "eno2"
 
 
 class Tc:
-    def __init__(self, cc='cubic', win=BDP, host=""):
+    def __init__(self, cc='cubic', win=WMEM, host=""):
         self.cc = cc
-        self.win = BDP
+        self.win = win
         self.host = host
         self.time = 90
         self.time = 90
@@ -52,7 +56,7 @@ def sleep(seconds=1):
 class Trial:
     time = 90
 
-    def __init__(self, name='experiment', dir='.', local='glomma', remote='mlc1', data=None, timeout=10 * 60):
+    def __init__(self, name='TEST', dir='.', local='glomma', remote='mlc1', data=None, timeout=10 * 60):
         """
         args:
             data: string of the number of bytes we should send. Ex. 1G
@@ -69,10 +73,10 @@ class Trial:
         self._mock = False
         self._timeout = timeout
 
-    def local_tc(self, cc='cubic', win=BDP):
+    def local_tc(self, cc='cubic', win=WMEM):
         self._local_tc = Tc(cc, win)
 
-    def remote_tc(self, cc='cubic', win=BDP):
+    def remote_tc(self, cc='cubic', win=WMEM):
         self._remote_tc = Tc(cc, win, self.remote)
 
     def _setup_tc(self):
@@ -103,7 +107,7 @@ class Trial:
         cmd.run(local_iperf).wait(self._timeout)
 
     def data_dir(self):
-        dir = f"./data/{self.name}"
+        dir = f"./{self.name}"
         if not os.path.exists(dir):
             os.makedirs(dir)
         return dir
@@ -146,7 +150,7 @@ class Trial:
             return [self.local_pcap, self.remote_pcap]
         except:
             traceback.print_exc()
-            print(f"ERROR: failed to finish experiemnt for directory {self.data_dir()}")
+            print(f"ERROR: failed to finish expirement for directory {self.data_dir()}")
             self._cleanup()
         finally:
             print(f"finished with {self.data_dir()}")
@@ -165,6 +169,9 @@ class Trial:
 
 def main():
     # from trial import *
-    t = Trial()
-    t.mock()
+    t = Trial(data='1G')
+    t.mock(False)
     t.start()
+
+if __name__ == "__main__":
+    main()

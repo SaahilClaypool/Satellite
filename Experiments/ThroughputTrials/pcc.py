@@ -19,9 +19,9 @@ def main():
     trial.remote_tc(cc=protocol)
     dir = trial.data_dir()
 
-    # trial.start()
-    az.DATA_DIR = './data/pcc'
-    az.main()
+    trial.start()
+    # az.DATA_DIR = './data/pcc'
+    # az.main()
 
 if __name__ == "__main__":
     main()

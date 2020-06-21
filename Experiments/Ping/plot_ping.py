@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use("AGG")
 
 from pylab import rcParams
 import numpy as np
@@ -6,8 +8,6 @@ import os
 import matplotlib.pyplot as plt
 import glob
 from datetime import timedelta
-import matplotlib
-matplotlib.use('AGG')
 
 
 rcParams['figure.figsize'] = 10, 8
