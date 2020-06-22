@@ -32,6 +32,24 @@ def plot_rtt_cdf(df, column='mean'):
     plt.title(f"CDF of {column} RTT")
     plt.savefig(f"{DATA_DIR}/{PREFIX}cdf_rtt_{column}.png")
 
+def plot_loss_cdf(df):
+    column = 'loss'
+    plt.close()
+
+    print(df.head())
+    for protocol, data in df.groupby('protocol'):
+        sorted_loss = data[column].sort_values().reset_index()
+        plt.plot(sorted_loss[column] * 100, sorted_loss.index /
+                 sorted_loss[column].count() * 100, label=protocol)
+
+    plt.legend()
+    plt.ylabel("Percent")
+    plt.xlabel(f"{column} loss %")
+    plt.title(f"CDF of {column} loss")
+    plt.savefig(f"{DATA_DIR}/{PREFIX}cdf_{column}.png")
+
+
+
 
 def plot_througput_cdf(df, column='mean'):
     plt.close()
@@ -159,10 +177,44 @@ def rtt_summary(prefix=""):
     plt.savefig(f"{DATA_DIR}/{PREFIX}rtt_boxplot.png")
     plt.close()
 
+def loss_summary(prefix=""):
+    global PREFIX
+    PREFIX = prefix
+
+    fname = f"{DATA_DIR}/{PREFIX}losses.csv"
+    df = pd.read_csv(fname, index_col=0).dropna(how='all')
+    df['start_time'] = pd.to_datetime(df['start_time'])
+    df = df.set_index('start_time').sort_index()
+    df['start_time'] = df.index
+
+    plot_loss_cdf(df)
+    plt.close()
+
+    # pdb.set_trace()
+
+    if 'start_time' in df.keys():
+        for protocol, data in df.groupby('protocol'):
+            column = 'loss'
+            column_name = 'loss'
+
+            plt.scatter(data.index, data[column] * 100, label=protocol)
+
+    ticks = [df['start_time'].quantile(i) for i in np.arange(0, 1, .1)]
+    plt.xticks(ticks, rotation=15)
+    plt.legend()
+    plt.ylabel(column_name)
+    date_formatter = matplotlib.dates.DateFormatter("%m/%d - %H:%M")
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(date_formatter)
+    plt.savefig(f"{DATA_DIR}/{PREFIX}loss_timeplot.png")
+    plt.close()
+
 
 if __name__ == "__main__":
     # throughput_summary()
     # rtt_summary()
+    loss_summary()
 
-    throughput_summary(prefix="steady_")
-    rtt_summary(prefix="steady_")
+    # throughput_summary(prefix="steady_")
+    # rtt_summary(prefix="steady_")
+    loss_summary(prefix="steady_")
