@@ -10,7 +10,7 @@ using Query
 
 fname = "./data/2020-06-01/mlc1_cubic_0/local.csv"
 
-df = CSV.read(fname)
+df = DataFrame(CSV.File(fname))
 
 function summarize_trial(df, start_bytes=0, end_bytes = 1e9)
     x = "tcp.seq"

@@ -252,7 +252,7 @@ def summary(df, directory=None, start_bytes=0, end_bytes=1e9 * 10):
 
     rtt_quantiles = dict([(str(q), df['tcp.analysis.ack_rtt'].quantile(
         q) * 1000) for q in quantile_cutoffs])
-    throughput_quantiles["mean"] = df['tcp.analysis.ack_rtt'].mean() * 1000
+    rtt_quantiles["mean"] = df['tcp.analysis.ack_rtt'].mean() * 1000
 
     print(rtt_quantiles)
     return throughput_quantiles, rtt_quantiles, host, protocol, start_time, loss

@@ -1,0 +1,115 @@
+# plot single flow (given by directory)
+# 
+import matplotlib as mpl
+mpl.use('AGG')
+import matplotlib.pyplot as plt
+import pdb
+from command import run
+from datetime import timedelta
+from glob import glob
+from os import path
+import numpy as np
+import os
+import feather
+import pandas as pd
+
+mpl.style.use('seaborn')
+font = {'family': 'Dejavu Sans',
+        'weight': 'normal',
+        'size': 20}
+
+mpl.rc('font', **font)
+
+number = "frame.number"
+time_epoch = "frame.time_epoch"
+src = "eth.src"
+dst = "eth.dst"
+src = "ip.src"
+dst = "ip.dst"
+srcport = "tcp.srcport"
+dstport = "tcp.dstport"
+seq = "tcp.seq"
+ack_rtt = "tcp.analysis.ack_rtt"
+proto = "ip.proto"
+time = "frame.time"
+
+
+def load_dataframe(filename, reparse=False):
+    """
+    opens csvfile and writes out .feather file
+
+    return: dataframe
+    """
+    base, _ext = path.splitext(filename)
+    feather_file = base + '.feather'
+    if (path.isfile(feather_file) and not reparse):
+        return feather.read_dataframe(feather_file)
+    else:
+        print(f"regenerating feather file for {filename}")
+        df = pd.read_csv(filename)
+        df['time'] = pd.to_datetime(
+            df['frame.time'], infer_datetime_format=True)
+        feather.write_dataframe(df, feather_file)
+        return df
+
+def window_by_second(df):
+    df['second'] = df.time.dt.minute * 60 + df.time.dt.second
+    seconds = df[df.second > df.second.min() + 1][df.second < df.second.max() - 1] .groupby('second')
+    tput = (seconds[seq].max() - seconds[seq].min()) / 125000
+    clocktime = seconds.time.min()
+
+    num_packets = seconds[seq].count()
+    unique_packets = seconds[seq].nunique()
+    loss = (num_packets - unique_packets) / num_packets
+    
+
+    return pd.DataFrame({'second': tput.index, 'throughput': tput, time: clocktime, 'loss': loss})
+
+def stacked_plot(directory, machine, output_file='temp.png'):
+    plt.close()
+    local_fname = f"{directory}/local_sender.csv"
+    remote_fname = f"{directory}/{machine}_sender.csv"
+    df = load_dataframe(local_fname)
+    rdf = load_dataframe(remote_fname)
+
+    brdf = load_dataframe(f"{directory}/{machine}.csv")
+    brdf = brdf[brdf[ack_rtt] > .3]
+
+    fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True)
+    sequence, tput, rtt, loss = axes
+    mbps = window_by_second(df)
+
+    sequence.plot(df.time, df[seq])
+    sequence.set_ylabel('sequence')
+
+    tput.plot(mbps[time], mbps['throughput'])
+    tput.set_ylabel('throughput')
+
+    rtt.plot(brdf.time, brdf[ack_rtt])
+    print(brdf[ack_rtt].min(), "min ack rtt")
+    rtt.set_ylabel('rtt')
+
+    loss.plot(mbps[time], mbps['loss'])
+    loss.set_ylabel('retransmission rate')
+
+    fig.savefig(output_file)
+
+
+
+
+
+
+MACHINE = 'mlc1'
+PROTOCOL = 'cubic'
+TRIAL = '0'
+DIR = f'./data/2020-06-01/{MACHINE}_{PROTOCOL}_{TRIAL}'
+def main():
+    day = './data/2020-06-01/'
+    data = []
+    for trial in [1, 2, 3, 4, 5]:
+        data += [('mlc1', 'cubic', str(trial)), ('mlc2', 'bbr', str(trial))]
+
+    for machine, protocol, trial in data:
+        dir = f"{day}/{machine}_{protocol}_{trial}"
+        print(dir)
+        stacked_plot(dir, machine, output_file=f"{day}/stacked_{protocol}_{trial}.png")
