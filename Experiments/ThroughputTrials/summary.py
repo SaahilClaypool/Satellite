@@ -209,12 +209,15 @@ def loss_summary(prefix=""):
     plt.savefig(f"{DATA_DIR}/{PREFIX}loss_timeplot.png")
     plt.close()
 
-
-if __name__ == "__main__":
-    # throughput_summary()
-    # rtt_summary()
+def main_summary():
+    throughput_summary()
+    rtt_summary()
     loss_summary()
 
-    # throughput_summary(prefix="steady_")
-    # rtt_summary(prefix="steady_")
+    throughput_summary(prefix="steady_")
+    rtt_summary(prefix="steady_")
     loss_summary(prefix="steady_")
+
+
+if __name__ == "__main__":
+    main_summary()

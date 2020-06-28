@@ -254,6 +254,7 @@ def summary(df, directory=None, start_bytes=0, end_bytes=1e9 * 10):
         q) * 1000) for q in quantile_cutoffs])
     throughput_quantiles["mean"] = df['tcp.analysis.ack_rtt'].mean() * 1000
 
+    print(rtt_quantiles)
     return throughput_quantiles, rtt_quantiles, host, protocol, start_time, loss
 
 
@@ -299,10 +300,13 @@ def main(DATA_DIR=DATA_DIR):
             continue
 
         results = analyze(local, remote, dir)
-        throughput_quantiles, _, host, protocol, start_time, _ = results[0]
-        steady_throughput_quantiles, _, _, _, steady_start_time, _ = results[1]
-        _, rtt_quantiles, _, _, _, loss = results[2]
-        _, steady_rtt_quantiles, _, _, _, steady_loss = results[3]
+        throughput_quantiles, rtt_quantiles, host, protocol, start_time, _ = results[0]
+        steady_throughput_quantiles, steady_rtt_quantiles, _, _, steady_start_time, _ = results[1]
+        _, _rtt_quantiles, _, _, _, loss = results[2]
+        _, _steady_rtt_quantiles, _, _, _, steady_loss = results[3]
+
+        # print(f"other rtt quantiles {other_rtt_quantiles}")
+        # print(f"rtt quantiles {rtt_quantiles}")
 
         throughput_quantiles['host'] = host
         throughput_quantiles['protocol'] = protocol

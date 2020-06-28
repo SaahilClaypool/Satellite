@@ -3,3 +3,6 @@ do
     sudo ip route add `dig +short $host` via 192.168.1.1 dev eno2
     sudo ip route show match `dig +short $host`
 done
+
+
+sudo ip route add 192.168.100.0/24 dev eno2

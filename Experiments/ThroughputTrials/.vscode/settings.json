@@ -3,4 +3,5 @@
     "python.jediEnabled": false,
     "r.rterm.linux": "/home/smclaypool/.local/bin/radian",
     "python.languageServer": "Microsoft",
+    "terminal.integrated.shell.linux": "/usr/bin/zsh"
 }
