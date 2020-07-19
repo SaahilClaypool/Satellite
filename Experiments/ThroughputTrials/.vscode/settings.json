@@ -1,7 +1,6 @@
 {
     "python.pythonPath": "/usr/bin/python3.6",
-    "python.jediEnabled": false,
     "r.rterm.linux": "/home/smclaypool/.local/bin/radian",
-    "python.languageServer": "Microsoft",
+    "python.languageServer": "Pylance",
     "terminal.integrated.shell.linux": "/usr/bin/zsh"
 }

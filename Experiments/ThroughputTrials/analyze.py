@@ -18,7 +18,8 @@ rcParams['figure.figsize'] = 10, 8
 
 
 # DATA_DIR = './data/2020-05-09/'
-DATA_DIR = './data/2020-06-01/'
+# DATA_DIR = './data/2020-06-01/'
+DATA_DIR = './data/2020-07-12/'
 # DATA_DIR = './data/pcc'
 
 # LOCAL = '192.168.1.102'
