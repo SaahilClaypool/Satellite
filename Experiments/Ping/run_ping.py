@@ -4,7 +4,7 @@ from optparse import OptionParser
 from datetime import date
 from time import sleep
 
-def client_ping(host="mlc1.cs.wpi.edu", output_file="ping_trace.txt"):
+def client_ping(host="mlcnetA.cs.wpi.edu", output_file="ping_trace.txt"):
   with open(output_file, 'w') as outfile:
     proc = Popen(["cUDPingLnx", "-h", host], stdout=outfile)
 

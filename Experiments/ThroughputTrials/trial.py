@@ -20,7 +20,7 @@ devices = {
     "mlc3": "ens3",
 }
 
-REMOTE_DEVICE = "ens3"
+REMOTE_DEVICE = "ens2"
 LOCAL_DEVICE = "eno2"
 
 
@@ -93,7 +93,8 @@ class Trial:
         cmd.run(local_cmd)
 
     def _cleanup(self):
-        procs = ['tcpdump', 'cUDPingLnx', 'sUDPingLnx', 'iperf3']
+        # procs = ['tcpdump', 'cUDPingLnx', 'sUDPingLnx', 'iperf3']
+        procs = ['tcpdump', 'iperf3']
         kill_cmd = 'pkill ' + '; pkill '.join(procs) + ';'
         cmd.run(kill_cmd).wait(self._timeout)
         cmd.run(kill_cmd, host=self.remote).wait(self._timeout)
@@ -139,7 +140,7 @@ class Trial:
             self._cleanup()
 
             self._setup_tc()
-            self._start_udp_ping()
+            # self._start_udp_ping()
             self._start_tcpdump()
 
             self._start_iperf()

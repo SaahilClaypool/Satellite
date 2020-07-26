@@ -1,8 +1,8 @@
 # plot single flow (given by directory)
 # 
 import matplotlib as mpl
-from matplotlib.pyplot import ylim
 mpl.use('AGG')
+from matplotlib.pyplot import ylim
 import matplotlib.pyplot as plt
 import pdb
 from command import run
@@ -16,10 +16,10 @@ import pandas as pd
 
 mpl.style.use('seaborn')
 font = {'family': 'Dejavu Sans',
-        'weight': 'normal',
-        'size': 20}
+        'size': 24}
 
-mpl.rc('font', **font)
+mpl.rcParams['figure.figsize'] = 10, 8
+mpl.rcParams.update({'font.size': 24})
 
 number = "frame.number"
 time_epoch = "frame.time_epoch"
@@ -80,28 +80,32 @@ def stacked_plot(directory, machine, output_file='temp.png'):
     brdf = load_dataframe(f"{directory}/{machine}.csv")
     brdf = brdf[brdf[ack_rtt] > .3]
 
-    fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True)
-    sequence, tput, rtt, loss = axes
+    fig, axes = plt.subplots(nrows=3, ncols=1, sharex=True)
+    tput, rtt, loss = axes
     mbps = window_by_second(df)
 
-    sequence.plot(df.time, df[seq])
-    sequence.set_ylabel('sequence')
-    sequence.set_ylim(ymin=0)
-    sequence.yaxis.set_major_locator(plt.MaxNLocator(4))
+    df['relative_time'] = (df.time - df.time.min()).dt.total_seconds()
+    brdf['relative_time'] = (brdf.time - brdf.time.min()).dt.total_seconds()
+    mbps['relative_time'] = (mbps[time] - mbps[time].min()).dt.total_seconds()
 
-    tput.plot(mbps[time], mbps['throughput'])
-    tput.set_ylabel('throughput')
+    # sequence.plot(df.relative_time, df[seq])
+    # sequence.set_ylabel('sequence')
+    # sequence.set_ylim(ymin=0)
+    # sequence.yaxis.set_major_locator(plt.MaxNLocator(4))
+
+    tput.plot(mbps['relative_time'], mbps['throughput'])
+    tput.set_ylabel('Tpu (Mb/s)')
     tput.set_ylim(ymin=0, ymax=300)
     tput.yaxis.set_major_locator(plt.MaxNLocator(4))
 
-    rtt.plot(brdf.time, brdf[ack_rtt] * 1000)
-    rtt.set_ylabel('rtt (ms)')
+    rtt.plot(brdf.relative_time, brdf[ack_rtt] * 1000)
+    rtt.set_ylabel('RTT (ms)')
     rtt.set_ylim(ymin=0, ymax=5000)
     rtt.yaxis.set_major_locator(plt.MaxNLocator(4))
 
-    loss.plot(mbps[time], mbps['loss'])
-    loss.set_ylabel('retransmission rate')
-    loss.set_ylim(ymin=0)
+    loss.plot(mbps['relative_time'], mbps['loss'])
+    loss.set_ylabel('retransmission\nrate')
+    loss.set_ylim(ymin=0, ymax=100)
     loss.yaxis.set_major_locator(plt.MaxNLocator(4))
 
     fig.savefig(output_file)
@@ -116,10 +120,11 @@ PROTOCOL = 'cubic'
 TRIAL = '0'
 DIR = f'./data/2020-06-01/{MACHINE}_{PROTOCOL}_{TRIAL}'
 def main():
-    day = './data/2020-06-01/'
+    day = './data/2020-07-21/'
     data = []
     for trial in [1, 2, 3, 4, 5]:
-        data += [('mlc1', 'cubic', str(trial)), ('mlc2', 'bbr', str(trial)), ('mlc3', 'hybla', str(trial))]
+    # for trial in [1]:
+        data += [('mlcnetA.cs.wpi.edu', 'cubic', str(trial)), ('mlcnetB.cs.wpi.edu', 'bbr', str(trial)), ('mlcnetC.cs.wpi.edu', 'hybla', str(trial))]
 
     for machine, protocol, trial in data:
         dir = f"{day}/{machine}_{protocol}_{trial}"

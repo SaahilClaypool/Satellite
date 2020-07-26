@@ -17,9 +17,10 @@ def all_frames(folder="./data/"):
     dataframes = []
     for file in glob.glob(f"{folder}/*.txt"):
         df = parse_file(file)
+        print(file)
         dataframes.append(df)
 
-        break  # temp
+        # break  # temp
 
     df = pd.concat(dataframes)
 
@@ -35,7 +36,7 @@ def plot_each_day(folder="./data/"):
     for file in glob.glob(f"{folder}/*.txt"):
         df = parse_file(file)
         base = file.split("/")[-1].replace(".txt", "")
-        # plot_pings(df, "graphs/" + base + ".png")
+        plot_pings(df, "graphs/" + base + ".png")
         plot_sampled(df, f"graphs/quantiles", base)
         plot_sampled(df, f"graphs/nomax", base,
                      quantiles=[0.25, 0.5, 0.75], names=["lower", "median", "upper"])
@@ -50,7 +51,10 @@ def parse_line(line):
     for item in items:
         key, value = item.split('=')
         value = value.replace('ms', '')
-        d[key] = int(value)
+        try:
+            d[key] = int(value)
+        except:
+            d[key] = 1000
     return d
 
 
@@ -202,7 +206,7 @@ def plot_cdf(df, output_dir="./graphs/cdf", title="cdf"):
 
     sorted_rtts = df['rtt'].sort_values().reset_index()
     plt.close()
-    plt.plot(sorted_rtts.rtt, sorted_rtts.index /
+    plt.scatter(sorted_rtts.rtt, sorted_rtts.index /
              sorted_rtts.rtt.count() * 100)
     plt.ylabel("Percent")
     plt.xlabel("ping (ms)")
@@ -238,6 +242,11 @@ def plot_pings(df, output_file="./graphs/ping.png"):
 
 def main():
     plot_each_day()
+    # plot_all_frame()
+    f = "./data/ping_trace_20_07_22.txt"
+    df = parse_file(f)
+    print(df)
+    plot_windowed_loss(df)
 
 
 if __name__ == "__main__":

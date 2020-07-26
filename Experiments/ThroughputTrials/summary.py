@@ -10,10 +10,14 @@ import math as m
 
 
 rcParams['figure.figsize'] = 10, 8
+font = {'family' : 'DejaVu Sans',
+        'size'   : 20}
+matplotlib.rc('font', **font)
 
 # DATA_DIR = './data/2020-05-09/'
 # DATA_DIR = './data/2020-06-01/'
-DATA_DIR = './data/2020-07-12/'
+# DATA_DIR = './data/2020-07-12/'
+DATA_DIR = './data/2020-07-21/'
 
 global PREFIX
 PREFIX = ""
@@ -74,7 +78,8 @@ def throughput_summary(prefix=PREFIX):
     fname = f"{DATA_DIR}/{PREFIX}quantiles.csv"
     print(fname)
     df = pd.read_csv(fname, index_col=0).dropna(how='all')
-    df['start_time'] = pd.to_datetime(df['start_time'])
+    print(df)
+    df['start_time'] = pd.to_datetime(df['start_time'], errors='coerce').dropna()
     df = df.set_index('start_time').sort_index()
     df['start_time'] = df.index
 
@@ -112,7 +117,8 @@ def throughput_summary(prefix=PREFIX):
     plt.savefig(f"{DATA_DIR}/{PREFIX}big_box.png")
     plt.close()
 
-    df.boxplot(by='protocol')
+    df[['protocol', '0.1', '0.5', '0.9', 'mean']].boxplot(by='protocol')
+    plt.ylim(0, 200)
     plt.savefig(f"{DATA_DIR}/{PREFIX}box_protocol.png")
     plt.close()
 
@@ -159,7 +165,7 @@ def rtt_summary(prefix=""):
 
     fname = f"{DATA_DIR}/{PREFIX}rtt_quantiles.csv"
     df = pd.read_csv(fname, index_col=0).dropna(how='all')
-    df['start_time'] = pd.to_datetime(df['start_time'])
+    df['start_time'] = pd.to_datetime(df['start_time'], errors='coerce').dropna()
     df = df.set_index('start_time').sort_index()
     df['start_time'] = df.index
 
@@ -184,7 +190,7 @@ def loss_summary(prefix=""):
 
     fname = f"{DATA_DIR}/{PREFIX}losses.csv"
     df = pd.read_csv(fname, index_col=0).dropna(how='all')
-    df['start_time'] = pd.to_datetime(df['start_time'])
+    df['start_time'] = pd.to_datetime(df['start_time'], errors='coerce').dropna()
     df = df.set_index('start_time').sort_index()
     df['start_time'] = df.index
 

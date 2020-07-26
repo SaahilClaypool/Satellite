@@ -3,7 +3,8 @@
 from time import time
 from os import system
 
-hosts = ["mlc1", "mlc2", "mlc3", "mlc4"]
+# hosts = ["mlc1", "mlc2", "mlc3", "mlc4"]
+hosts = ["mlcnetA.cs.wpi.edu", "mlcnetB.cs.wpi.edu", "mlcnetC.cs.wpi.edu", "mlcnetD.cs.wpi.edu"]
 
 bad = False
 

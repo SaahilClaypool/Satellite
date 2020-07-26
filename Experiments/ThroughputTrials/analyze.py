@@ -19,7 +19,7 @@ rcParams['figure.figsize'] = 10, 8
 
 # DATA_DIR = './data/2020-05-09/'
 # DATA_DIR = './data/2020-06-01/'
-DATA_DIR = './data/2020-07-12/'
+DATA_DIR = './data/2020-07-21/'
 # DATA_DIR = './data/pcc'
 
 # LOCAL = '192.168.1.102'
@@ -205,7 +205,10 @@ def summary(df, directory=None, start_bytes=0, end_bytes=1e9 * 10):
         end_bytes: last byte to process. Default 10 gig (so as not to be important)
     """
 
-    temp_df = df[df['tcp.seq'] >= start_bytes][df['tcp.seq'] <= end_bytes].reset_index()
+    try:
+        temp_df = df[df['tcp.seq'] >= start_bytes][df['tcp.seq'] <= end_bytes].reset_index()
+    except:
+        temp_df = pd.DataFrame()
 
     if temp_df.empty:
         temp_df = df.tail(int(len(df) / 2)).reset_index()
@@ -218,7 +221,8 @@ def summary(df, directory=None, start_bytes=0, end_bytes=1e9 * 10):
         host, protocol = '', ''
 
     if df.empty:
-        return {}, {}, host, protocol, 0
+        # throughput_quantiles, rtt_quantiles, host, protocol, start_time, loss
+        return {}, {}, host, protocol, 0, 0
 
     start_time = df['frame.time'][0]
 
@@ -378,7 +382,11 @@ def timeslice(filename):
     gig = 1e+9
     num_objects = 100
     times = []
-    base_time = sender.time.min()
+    try:
+        base_time = sender.time.min()
+    except:
+        return pd.DataFrame()
+
     host, protocol = parse_directory(dirname)
 
     for i in range(num_objects):
@@ -411,6 +419,9 @@ def retrofit_times(directory):
     quantiles_df['start_time'] = start_times
     quantiles_df.to_csv(csvfile)
 
+def scratch():
+    local, remote, dir = "./data/2020-07-21/mlcnetD.cs.wpi.edu_cubic_0/local.pcap", "./data/2020-07-21/mlcnetD.cs.wpi.edu_cubic_0/mlcnetD.cs.wpi.edu.pcap", "./data/2020-07-21/mlcnetD.cs.wpi.edu_cubic_0/" 
+    analyze(local, remote, dir)
 
 if __name__ == "__main__":
     main()
