@@ -11,7 +11,7 @@ def main():
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    machine = "mlc4"
+    machine = "mlcnetD.cs.wpi.edu"
     protocol = "pcc"
 
     title = f"{dir}/{machine}_{protocol}"

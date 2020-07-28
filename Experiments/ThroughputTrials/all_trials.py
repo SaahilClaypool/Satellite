@@ -7,16 +7,16 @@ import os
 def all_trials_main():
     # roughly 1 day of trails
     machines = [
-        "mlcnetA.cs.wpi.edu",
-        "mlcnetB.cs.wpi.edu",
-        "mlcnetC.cs.wpi.edu",
+        # "mlcnetA.cs.wpi.edu",
+        # "mlcnetB.cs.wpi.edu",
+        # "mlcnetC.cs.wpi.edu",
         "mlcnetD.cs.wpi.edu"
     ]
     protocols = [
-        "cubic",
-        "bbr",
-        "hybla",
-        "cubic"
+        # "cubic",
+        # "bbr",
+        # "hybla",
+        "pcc"
     ]
 
     dir = 'data/' + date.today().strftime("%Y-%m-%d")

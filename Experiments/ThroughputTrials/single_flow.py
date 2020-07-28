@@ -2,6 +2,7 @@
 # 
 import matplotlib as mpl
 mpl.use('AGG')
+from pylab import rcParams
 from matplotlib.pyplot import ylim
 import matplotlib.pyplot as plt
 import pdb
@@ -14,12 +15,26 @@ import os
 import feather
 import pandas as pd
 
-mpl.style.use('seaborn')
-font = {'family': 'Dejavu Sans',
-        'size': 24}
+mpl.style.use('seaborn-paper')
+rcParams['figure.figsize'] = 10,8
+mpl.rcParams['font.size'] =  15.0
 
-mpl.rcParams['figure.figsize'] = 10, 8
-mpl.rcParams.update({'font.size': 24})
+import matplotlib.pylab as pylab
+params = {'legend.fontsize': 'x-large',
+         'axes.labelsize': 'x-large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'x-large',
+         'ytick.labelsize':'x-large'}
+pylab.rcParams.update(params)
+plt.tight_layout(pad=0.75)
+
+
+labelmap = {
+    'pcc': 'PCC',
+    'bbr': 'BBR',
+    'cubic': 'Cubic',
+    'hybla' : 'Hybla'
+}
 
 number = "frame.number"
 time_epoch = "frame.time_epoch"
@@ -94,21 +109,25 @@ def stacked_plot(directory, machine, output_file='temp.png'):
     # sequence.yaxis.set_major_locator(plt.MaxNLocator(4))
 
     tput.plot(mbps['relative_time'], mbps['throughput'])
-    tput.set_ylabel('Tpu (Mb/s)')
-    tput.set_ylim(ymin=0, ymax=300)
+    tput.set_ylabel('Tput (Mb/s)')
+    tput.set_ylim(ymin=0, ymax=240)
     tput.yaxis.set_major_locator(plt.MaxNLocator(4))
 
     rtt.plot(brdf.relative_time, brdf[ack_rtt] * 1000)
     rtt.set_ylabel('RTT (ms)')
-    rtt.set_ylim(ymin=0, ymax=5000)
+    rtt.set_ylim(ymin=0, ymax=3500)
     rtt.yaxis.set_major_locator(plt.MaxNLocator(4))
 
     loss.plot(mbps['relative_time'], mbps['loss'])
-    loss.set_ylabel('retransmission\nrate')
+    loss.set_ylabel('Retrans. Rate')
     loss.set_ylim(ymin=0, ymax=100)
     loss.yaxis.set_major_locator(plt.MaxNLocator(4))
 
+    loss.set_xlabel('Time (seconds)')
+    loss.set_xlim(xmin=0, xmax=100)
+
     fig.savefig(output_file)
+    print('saved to ', output_file)
 
 
 
@@ -131,5 +150,10 @@ def main():
         print(dir)
         stacked_plot(dir, machine, output_file=f"{day}/stacked_{protocol}_{trial}.png")
 
+def pcc():
+    stacked_plot('./pcc/mlcnetD.cs.wpi.edu_pcc', 'mlcnetD.cs.wpi.edu', output_file=f"pcc/pcc.png")
+
+
 if __name__ == "__main__":
     main()
+    # pcc()

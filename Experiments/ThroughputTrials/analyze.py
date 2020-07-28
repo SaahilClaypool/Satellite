@@ -20,7 +20,7 @@ rcParams['figure.figsize'] = 10, 8
 # DATA_DIR = './data/2020-05-09/'
 # DATA_DIR = './data/2020-06-01/'
 DATA_DIR = './data/2020-07-21/'
-# DATA_DIR = './data/pcc'
+# DATA_DIR = './pcc'
 
 # LOCAL = '192.168.1.102'
 # REMOTE = '130.215.28.35'

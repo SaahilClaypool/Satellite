@@ -1,5 +1,5 @@
-import matplotlib
-matplotlib.use('AGG')
+import matplotlib as mpl
+mpl.use('AGG')
 from analyze import all_pcaps
 
 from pylab import rcParams
@@ -15,9 +15,36 @@ import matplotlib.pyplot as plt
 
 import seaborn as sns
 
-rcParams['figure.figsize'] = 10, 8
+mpl.style.use('seaborn-paper')
+rcParams['figure.figsize'] = 10,8
+# rcParams['savefig.pad_inches'] = 0.5
+rcParams['figure.constrained_layout.use'] = True
+mpl.rcParams['font.size'] =  15.0
 
-DATA_DIR = './data/2020-05-09/'
+import matplotlib.pylab as pylab
+params = {'legend.fontsize': 'x-large',
+         'axes.labelsize': 'x-large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'x-large',
+         'ytick.labelsize':'x-large'}
+pylab.rcParams.update(params)
+
+
+labelmap = {
+    'pcc': 'PCC',
+    'bbr': 'BBR',
+    'cubic': 'Cubic',
+    'hybla' : 'Hybla'
+}
+
+colormap = {
+    'pcc': 'firebrick',
+    'bbr': 'olivedrab',
+    'cubic': 'teal',
+    'hybla' : 'darkorchid'
+}
+
+DATA_DIR = './data/2020-07-21/'
 
 def load_timeslices_dataframe():
     feather_file = f"{DATA_DIR}/timeslices.feather" 
@@ -35,7 +62,10 @@ def load_timeslices_dataframe():
 
             local_feather_file = dir + "/timeslice.feather"
             print(feather_file)
-            df = pd.read_feather(local_feather_file)
+            try:
+                df = pd.read_feather(local_feather_file)
+            except:
+                continue
             frames.append(df)
 
         frame = pd.concat(frames)
@@ -56,12 +86,12 @@ def plot_average_downloads(df):
         
         means = pd.DataFrame(means)
 
-        plt.scatter(means['file_size'] / 1e6, pd.to_timedelta(means['time'], unit='ns').astype('timedelta64[s]'), label=protocol, alpha=0.5)
+        plt.scatter(means['file_size'] / 1e6, pd.to_timedelta(means['time'], unit='ns').astype('timedelta64[s]'), label=labelmap[protocol], color=colormap[protocol], alpha=0.5)
 
     plt.xscale('linear')
     plt.yscale('linear')
-    plt.xlabel('megabytes downloaded')
-    plt.ylabel('seconds')
+    plt.xlabel('Download Size (Mb)')
+    plt.ylabel('Time (s)')
     plt.legend()
     plt.savefig(f"{DATA_DIR}/time_download.png")
     plt.close()
@@ -76,10 +106,10 @@ def sbrn(df):
     df['time'] = pd.to_timedelta(df['time'], unit='ns').astype('timedelta64[s]')
     
     for protocol, data in df.groupby('protocol'):
-        sns.regplot(x='file_size', y='time', data=data, x_estimator=np.mean, label=protocol, scatter_kws={'s': 2})
+        sns.regplot(x='file_size', y='time', data=data, x_estimator=np.mean, label=labelmap[protocol], color=colormap[protocol], scatter_kws={'s': 2})
 
-    plt.xlabel('megabytes downloaded')
-    plt.ylabel('seconds')
+    plt.xlabel('Download Size (Mb)')
+    plt.ylabel('Time (s)')
     plt.legend()
     plt.savefig(f"{DATA_DIR}/time_download.png")
     plt.close()
@@ -90,12 +120,11 @@ def cdf_downloads(df, column='time'):
     for protocol, data in df.groupby('protocol'):
         sorted = data[column].sort_values().reset_index(drop=True)
         plt.plot(sorted, sorted.index * 100 /
-                sorted.count(), label=protocol)
+                sorted.count(), label=labelmap[protocol], color=colormap[protocol])
 
     plt.legend()
     plt.ylabel("Percent")
     plt.xlabel(f"{column} to download")
-    plt.title(f"CDF of {column} to download filesize")
     plt.savefig(f"{DATA_DIR}/cdf_{column}.png")
 
 

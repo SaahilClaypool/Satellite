@@ -1,16 +1,44 @@
+import matplotlib as mpl
+mpl.use('AGG')
+
 import math as m
 from pylab import rcParams
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from analyze import *
-import matplotlib
-matplotlib.use('AGG')
 
 
-plt.style.use('seaborn')
-rcParams['figure.figsize'] = 10, 8
-# plot_rtt_cdf(all_rtts)
+mpl.style.use('seaborn-paper')
+rcParams['figure.figsize'] = 10,8
+mpl.rcParams['font.size'] =  12.0
+rcParams.update({'figure.autolayout': True})
+plt.tight_layout(pad=0.75)
+
+
+
+import matplotlib.pylab as pylab
+params = {'legend.fontsize': 'x-large',
+         'axes.labelsize': 'x-large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'x-large',
+         'ytick.labelsize':'x-large'}
+pylab.rcParams.update(params)
+
+labelmap = {
+    'pcc': 'PCC',
+    'bbr': 'BBR',
+    'cubic': 'Cubic',
+    'hybla' : 'Hybla'
+}
+
+
+colormap = {
+    'pcc': 'firebrick',
+    'bbr': 'olivedrab',
+    'cubic': 'teal',
+    'hybla' : 'darkorchid'
+}
 
 
 number = "frame.number"
@@ -85,11 +113,12 @@ def plot_rtt_cdf(df, prefix=""):
     for protocol, data in df.groupby('protocol'):
         sorted_rtt = data[ack_rtt].sort_values().reset_index()
         plt.plot(sorted_rtt[ack_rtt], sorted_rtt.index /
-                 sorted_rtt[ack_rtt].count() * 100, label=protocol)
+                 sorted_rtt[ack_rtt].count() * 100, label=labelmap[protocol], color=colormap[protocol])
 
     plt.legend()
     plt.ylabel("Percent")
-    plt.xlabel(f"Ack rtt (seconds)")
+    plt.xlabel(f"RTT (seconds)")
+    plt.xlim(xmin=0, xmax=5)
     plt.savefig(f"{DATA_DIR}/{prefix}ack_rtt.png")
 
 
@@ -99,12 +128,14 @@ def plot_retransmission_cdf(df, prefix=""):
     for protocol, data in df.groupby('protocol'):
         sorted_rtt = data['retransmission'].sort_values().reset_index()
         plt.plot(sorted_rtt['retransmission'] * 100, sorted_rtt.index /
-                 sorted_rtt['retransmission'].count() * 100, label=protocol)
+                 sorted_rtt['retransmission'].count() * 100, label=labelmap[protocol], color=colormap[protocol])
 
     plt.legend()
     plt.ylabel("Percent")
     plt.xlabel(f"Retransmission Rate (%)")
-    plt.savefig(f"{DATA_DIR}/{prefix}retrans.png")
+    fname = f"{DATA_DIR}/{prefix}retrans.png"
+    plt.savefig(fname)
+    print('saved', fname)
 
 def plot_all():
     all_rtts = single_dataframe_rtt()
