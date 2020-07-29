@@ -19,7 +19,8 @@ rcParams['figure.figsize'] = 10, 8
 
 # DATA_DIR = './data/2020-05-09/'
 # DATA_DIR = './data/2020-06-01/'
-DATA_DIR = './data/2020-07-21/'
+# DATA_DIR = './data/2020-07-21/'
+DATA_DIR = './data/2020-07-27/'
 # DATA_DIR = './pcc'
 
 # LOCAL = '192.168.1.102'
@@ -380,7 +381,7 @@ def timeslice(filename):
     sender_path, receiver_path = parsed_filenames(filename)
     sender = feather.read_dataframe(sender_path)
     gig = 1e+9
-    num_objects = 100
+    num_objects = 1000
     times = []
     try:
         base_time = sender.time.min()

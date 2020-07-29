@@ -101,7 +101,7 @@ def single_dataframe_retransmission(second_half = False):
             df['retransmission'] = retrans_rate
 
             df['protocol'] = protocol
-            all_dataframes.append(df)
+            all_dataframes.append(df[df['retransmission'] < 0.95])
         except Exception as e:
             next
     return pd.concat(all_dataframes)
@@ -115,17 +115,20 @@ def plot_rtt_cdf(df, prefix=""):
         plt.plot(sorted_rtt[ack_rtt], sorted_rtt.index /
                  sorted_rtt[ack_rtt].count() * 100, label=labelmap[protocol], color=colormap[protocol])
 
-    plt.legend()
+    plt.legend(loc='lower right')
     plt.ylabel("Percent")
     plt.xlabel(f"RTT (seconds)")
     plt.xlim(xmin=0, xmax=5)
-    plt.savefig(f"{DATA_DIR}/{prefix}ack_rtt.png")
+    fname = f"{DATA_DIR}/{prefix}ack_rtt.png"
+    print(fname)
+    plt.savefig(fname)
 
 
 def plot_retransmission_cdf(df, prefix=""):
     plt.close()
 
     for protocol, data in df.groupby('protocol'):
+        data = data[data['retransmission']  < .95] # filter broken others out
         sorted_rtt = data['retransmission'].sort_values().reset_index()
         plt.plot(sorted_rtt['retransmission'] * 100, sorted_rtt.index /
                  sorted_rtt['retransmission'].count() * 100, label=labelmap[protocol], color=colormap[protocol])
@@ -141,14 +144,14 @@ def plot_all():
     all_rtts = single_dataframe_rtt()
     plot_rtt_cdf(all_rtts)
 
-    all_retransmission = single_dataframe_retransmission()
-    plot_retransmission_cdf(all_retransmission)
+    # all_retransmission = single_dataframe_retransmission()
+    # plot_retransmission_cdf(all_retransmission)
 
-    all_rtts = single_dataframe_rtt(second_half=True)
-    plot_rtt_cdf(all_rtts, prefix="steady_")
+    # all_rtts = single_dataframe_rtt(second_half=True)
+    # plot_rtt_cdf(all_rtts, prefix="steady_")
 
-    all_retransmission = single_dataframe_retransmission(second_half=True)
-    plot_retransmission_cdf(all_retransmission, prefix="steady_")
+    # all_retransmission = single_dataframe_retransmission(second_half=True)
+    # plot_retransmission_cdf(all_retransmission, prefix="steady_")
 
 
 if __name__ == "__main__":

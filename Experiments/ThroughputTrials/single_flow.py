@@ -124,7 +124,7 @@ def stacked_plot(directory, machine, output_file='temp.png'):
     loss.yaxis.set_major_locator(plt.MaxNLocator(4))
 
     loss.set_xlabel('Time (seconds)')
-    loss.set_xlim(xmin=0, xmax=100)
+    loss.set_xlim(xmin=0, xmax=90)
 
     fig.savefig(output_file)
     print('saved to ', output_file)
@@ -139,11 +139,16 @@ PROTOCOL = 'cubic'
 TRIAL = '0'
 DIR = f'./data/2020-06-01/{MACHINE}_{PROTOCOL}_{TRIAL}'
 def main():
-    day = './data/2020-07-21/'
+    day = './data/2020-07-27/'
     data = []
     for trial in [1, 2, 3, 4, 5]:
     # for trial in [1]:
-        data += [('mlcnetA.cs.wpi.edu', 'cubic', str(trial)), ('mlcnetB.cs.wpi.edu', 'bbr', str(trial)), ('mlcnetC.cs.wpi.edu', 'hybla', str(trial))]
+        data += [
+            ('mlcnetA.cs.wpi.edu', 'cubic', str(trial)), 
+            ('mlcnetB.cs.wpi.edu', 'bbr', str(trial)), 
+            ('mlcnetC.cs.wpi.edu', 'hybla', str(trial)),
+            ('mlcnetD.cs.wpi.edu', 'pcc', str(trial))
+        ]
 
     for machine, protocol, trial in data:
         dir = f"{day}/{machine}_{protocol}_{trial}"

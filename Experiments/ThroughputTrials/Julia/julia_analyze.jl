@@ -7,8 +7,9 @@
 using DataFrames
 using CSV
 using Query
+using Dates
 
-fname = "./data/2020-06-01/mlc1_cubic_0/local.csv"
+fname = "../data/2020-07-27/mlcnetA.cs.wpi.edu_cubic_0/local.csv"
 
 df = DataFrame(CSV.File(fname))
 
@@ -21,3 +22,6 @@ end
 
 
 df |> @filter ()
+
+
+Dates.DateTime(df["frame.time_epoch"][1] / 1000)
