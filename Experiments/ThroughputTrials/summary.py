@@ -94,22 +94,23 @@ def plot_througput_cdf(df, column='mean'):
 
 def summary_statistics(prefix=PREFIX):
     global PREFIX
-    fname = f"{DATA_DIR}/{PREFIX}quantiles.csv"
+    fname = f"{DATA_DIR}/{prefix}quantiles.csv"
+    print(f"summary of {fname}")
     df = pd.read_csv(fname, index_col=0).dropna(how='all')
     mean = df.groupby('protocol').mean()['mean']
     std = df.groupby('protocol').std()['mean']
-    print('mean throughput', mean)
-    print('std throughput', std)
+    print(f'{prefix} mean throughput', mean)
+    print(f'{prefix} std throughput', std)
     with open('out.txt', 'w') as output_file:
         print(df.groupby('protocol').describe(), file=output_file)
 
 
-    fname = f"{DATA_DIR}/{PREFIX}rtt_quantiles.csv"
+    fname = f"{DATA_DIR}/{prefix}rtt_quantiles.csv"
     df = pd.read_csv(fname, index_col=0).dropna(how='all')
     mean = df.groupby('protocol').mean()['mean']
     std = df.groupby('protocol').std()['mean']
-    print('mean rtt', mean)
-    print('std rtt', std)
+    print(f'{prefix} mean rtt', mean)
+    print(f'{prefix} std rtt', std)
 
 
 
@@ -269,5 +270,7 @@ def main_summary():
 
 
 if __name__ == "__main__":
-    main_summary()
+    # main_summary()
     summary_statistics()
+    summary_statistics(prefix="steady_")
+    summary_statistics(prefix="startup_")

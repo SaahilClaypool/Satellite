@@ -124,7 +124,7 @@ def stacked_plot(directory, machine, output_file='temp.png'):
     loss.yaxis.set_major_locator(plt.MaxNLocator(4))
 
     loss.set_xlabel('Time (seconds)')
-    loss.set_xlim(xmin=0, xmax=90)
+    loss.set_xlim(xmin=0, xmax=80)
 
     fig.savefig(output_file)
     print('saved to ', output_file)

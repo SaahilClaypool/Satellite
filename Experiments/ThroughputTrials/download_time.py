@@ -50,11 +50,14 @@ DATA_DIR = './data/2020-07-27/'
 def load_timeslices_dataframe():
     feather_file = f"{DATA_DIR}/timeslices.feather"
 
-    if (path.isfile(feather_file)):
-        df = pd.read_feather(feather_file).dropna()
-        df = df.set_index('time')
-        df['time'] = df.index
-        return df
+    # if (path.isfile(feather_file)):
+    #     df = pd.read_feather(feather_file).dropna()
+    #     df = df.set_index('time')
+    #     df['time'] = df.index
+    #     print('loaded pre thing timeslices')
+    #     return df
+    if False:
+        pass
     else:
         frames = []
         for local, remote, dir in all_pcaps(data_dir=DATA_DIR):
@@ -120,7 +123,7 @@ def sbrn(df):
     plt.xlim(xmin=0, xmax=50)
     plt.xlabel('Download Size (MBytes)')
     plt.ylabel('Time (s)')
-    plt.ylim(ymin=0, ymax=40)
+    plt.ylim(ymin=0, ymax=25)
     plt.legend()
     plt.savefig(f"{DATA_DIR}/time_download.png")
     plt.close()

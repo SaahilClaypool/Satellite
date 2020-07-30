@@ -144,14 +144,14 @@ def plot_all():
     all_rtts = single_dataframe_rtt()
     plot_rtt_cdf(all_rtts)
 
-    # all_retransmission = single_dataframe_retransmission()
-    # plot_retransmission_cdf(all_retransmission)
+    all_retransmission = single_dataframe_retransmission()
+    plot_retransmission_cdf(all_retransmission)
 
-    # all_rtts = single_dataframe_rtt(second_half=True)
-    # plot_rtt_cdf(all_rtts, prefix="steady_")
+    all_rtts = single_dataframe_rtt(second_half=True)
+    plot_rtt_cdf(all_rtts, prefix="steady_")
 
-    # all_retransmission = single_dataframe_retransmission(second_half=True)
-    # plot_retransmission_cdf(all_retransmission, prefix="steady_")
+    all_retransmission = single_dataframe_retransmission(second_half=True)
+    plot_retransmission_cdf(all_retransmission, prefix="steady_")
 
 
 if __name__ == "__main__":

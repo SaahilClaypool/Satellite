@@ -164,9 +164,9 @@ def parse_csv(filename, reparse=False):
     df = load_dataframe(filename)
 
     # df.columns[df[.columns != 'tcp.analysis.ack_rtt']
-    requried_columns = ['frame.time', 'frame.number', 'frame.time_epoch', 'eth.src', 'eth.dst',
+    required_columns = ['frame.time', 'frame.number', 'frame.time_epoch', 'eth.src', 'eth.dst',
                         'ip.src', 'ip.dst', 'tcp.srcport', 'tcp.dstport', 'tcp.seq', 'ip.proto', 'time']
-    df.dropna(subset=requried_columns, inplace=True)
+    df.dropna(subset=required_columns, inplace=True)
     df = df.set_index('frame.time').sort_index()
 
     group_tuple = ["ip.src", "ip.dst", "tcp.srcport", "tcp.dstport"]
@@ -278,20 +278,49 @@ def analyze(local, remote, dir):
     remote_sender_flow, _remote_receiver_flow = parse_csv(
         remote_csv, reparse=should_reparse_feather)
     second_half = {"start_bytes": 1e9 / 2, "end_bytes": 1e9}
+    startup = {"start_bytes": 0, "end_bytes": 5e7}
     return [
             summary(local_sender_flow, dir),  # 0
             summary(local_sender_flow, dir, **second_half),
             summary(remote_sender_flow, dir),  # 2
             summary(remote_sender_flow, dir, **second_half),
+            summary(local_sender_flow, dir, **startup),
         ]
 
+def find_rtt_quantiles(csvfile, steady=False, startup=False):
+    df = load_dataframe(csvfile)
+    df = df.dropna(subset=['tcp.analysis.ack_rtt'])
+    df = df[df['tcp.analysis.ack_rtt'] > .4]
+
+    if steady:
+        df = df[df['frame.time_epoch'] - df['frame.time_epoch'].min() > 30]
+
+    if startup:
+        df = df[df['frame.time_epoch'] - df['frame.time_epoch'].min() < 30]
+
+    quantile_cutoffs = [
+        0,
+        .1,
+        0.25,
+        0.5,
+        0.75,
+        0.9,
+        1.0
+    ]
+
+    rtt_quantiles = dict([(str(q), df['tcp.analysis.ack_rtt'].quantile(
+        q) * 1000) for q in quantile_cutoffs])
+    rtt_quantiles["mean"] = df['tcp.analysis.ack_rtt'].mean() * 1000
+    return rtt_quantiles
 
 def main(DATA_DIR=DATA_DIR):
     throughputs = []
     steady_throughputs = []
+    startup_throughputs = []
 
     rtts = []
     steady_rtts = []
+    startup_rtts = []
 
     losses = []
     steady_losses = []
@@ -299,17 +328,22 @@ def main(DATA_DIR=DATA_DIR):
     timeslices = []
     i = 0
     for local, remote, dir in all_pcaps():
-        print(f"{i}: {local}, {remote}")
+        print(f"{i}: {local}, {remote}, {dir}")
         i += 1
         if remote == None:
             print('ignoring trial', i)
             continue
 
         results = analyze(local, remote, dir)
-        throughput_quantiles, rtt_quantiles, host, protocol, start_time, _ = results[0]
-        steady_throughput_quantiles, steady_rtt_quantiles, _, _, steady_start_time, _ = results[1]
+        throughput_quantiles, _rtt_quantiles, host, protocol, start_time, _ = results[0]
+        steady_throughput_quantiles, _steady_rtt_quantiles, _, _, steady_start_time, _ = results[1]
         _, _rtt_quantiles, _, _, _, loss = results[2]
         _, _steady_rtt_quantiles, _, _, _, steady_loss = results[3]
+        startup_throughput_quantiles, _startup_rtt_quantiles, _, _, startup_start_time, _ = results[4]
+
+        rtt_quantiles = find_rtt_quantiles(pcap_to_csv(remote))
+        steady_rtt_quantiles = find_rtt_quantiles(pcap_to_csv(remote), steady=True)
+        startup_rtt_quantiles = find_rtt_quantiles(pcap_to_csv(remote), startup=True)
 
         # print(f"other rtt quantiles {other_rtt_quantiles}")
         # print(f"rtt quantiles {rtt_quantiles}")
@@ -324,6 +358,11 @@ def main(DATA_DIR=DATA_DIR):
         steady_throughput_quantiles['start_time'] = start_time
         steady_throughputs.append(steady_throughput_quantiles)
 
+        startup_throughput_quantiles['host'] = host
+        startup_throughput_quantiles['protocol'] = protocol
+        startup_throughput_quantiles['start_time'] = start_time
+        startup_throughputs.append(startup_throughput_quantiles)
+
         rtt_quantiles['host'] = host
         rtt_quantiles['protocol'] = protocol
         rtt_quantiles['start_time'] = start_time
@@ -333,6 +372,11 @@ def main(DATA_DIR=DATA_DIR):
         steady_rtt_quantiles['protocol'] = protocol
         steady_rtt_quantiles['start_time'] = steady_start_time
         steady_rtts.append(steady_rtt_quantiles)
+
+        startup_rtt_quantiles['host'] = host
+        startup_rtt_quantiles['protocol'] = protocol
+        startup_rtt_quantiles['start_time'] = startup_start_time
+        startup_rtts.append(startup_rtt_quantiles)
 
         loss = {'loss': loss}
         loss['host'] = host
@@ -346,8 +390,8 @@ def main(DATA_DIR=DATA_DIR):
         steady_loss['start_time'] = start_time
         steady_losses.append(steady_loss)
 
-        ts = timeslice(local)
-        timeslices.append(pd.DataFrame(ts))
+        # ts = timeslice(local)
+        # timeslices.append(pd.DataFrame(ts))
 
     df = pd.DataFrame(throughputs)
     df.to_csv(f"{DATA_DIR}/quantiles.csv")
@@ -355,20 +399,29 @@ def main(DATA_DIR=DATA_DIR):
     df = pd.DataFrame(steady_throughputs)
     df.to_csv(f"{DATA_DIR}/steady_quantiles.csv")
 
+    df = pd.DataFrame(startup_throughputs)
+    df.to_csv(f"{DATA_DIR}/startup_quantiles.csv")
+
+    # -------------------------------------------- RTT
+
     df = pd.DataFrame(rtts)
     df.to_csv(f"{DATA_DIR}/rtt_quantiles.csv")
 
     df = pd.DataFrame(steady_rtts)
     df.to_csv(f"{DATA_DIR}/steady_rtt_quantiles.csv")
 
-    df = pd.DataFrame(losses)
-    df.to_csv(f"{DATA_DIR}/losses.csv")
+    df = pd.DataFrame(startup_rtts)
+    df.to_csv(f"{DATA_DIR}/startup_rtt_quantiles.csv")
 
-    df = pd.DataFrame(steady_losses)
-    df.to_csv(f"{DATA_DIR}/steady_losses.csv")
 
-    ts = pd.concat(timeslices)
-    ts.to_csv(f"{DATA_DIR}/timeslices.csv")
+    # df = pd.DataFrame(losses)
+    # df.to_csv(f"{DATA_DIR}/losses.csv")
+
+    # df = pd.DataFrame(steady_losses)
+    # df.to_csv(f"{DATA_DIR}/steady_losses.csv")
+
+    # ts = pd.concat(timeslices)
+    # ts.to_csv(f"{DATA_DIR}/timeslices.csv")
 
     # pdb.set_trace() # TODO: remove this, blocks at end of main
 
