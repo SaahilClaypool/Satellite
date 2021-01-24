@@ -20,13 +20,14 @@ mpl.style.use('seaborn-paper')
 rcParams['figure.figsize'] = 10, 8
 # rcParams['savefig.pad_inches'] = 0.5
 rcParams['figure.constrained_layout.use'] = True
-mpl.rcParams['font.size'] = 15.0
+mpl.rcParams['font.size'] = 18.0
 
 params = {'legend.fontsize': 'x-large',
           'axes.labelsize': 'x-large',
           'axes.titlesize': 'x-large',
           'xtick.labelsize': 'x-large',
-          'ytick.labelsize': 'x-large'}
+          'ytick.labelsize': 'x-large',
+         'lines.linewidth': 1.5}
 pylab.rcParams.update(params)
 
 
@@ -38,11 +39,12 @@ labelmap = {
 }
 
 colormap = {
-    'pcc': 'firebrick',
-    'bbr': 'olivedrab',
-    'cubic': 'teal',
-    'hybla': 'darkorchid'
+    'pcc': 'r',
+    'bbr': 'g',
+    'cubic': 'b',
+    'hybla' : 'm'
 }
+markers = ['o', '^', 's' ,'D']
 
 DATA_DIR = './data/2020-07-27/'
 
@@ -112,12 +114,15 @@ def sbrn(df):
     df['time'] = pd.to_timedelta(
         df['time'], unit='ns').astype('timedelta64[s]')
 
+    i = 0
     for protocol, data in df.groupby('protocol'):
         # sns.regplot(x='file_size', y='time', data=data, x_estimator=np.mean, label=labelmap[protocol], color=colormap[protocol], scatter_kws={
         #             's': 80}, fit_reg=False)
         group = data.groupby('file_size').mean()
-        plt.plot(group.index, group['time'], color=colormap[protocol])
-        plt.errorbar(group.index, group['time'], yerr=data.groupby('file_size').std()['time'], label=labelmap[protocol], color=colormap[protocol])
+        # plt.scatter(group.index, group['time'], color=colormap[protocol])
+        X = 5
+        plt.errorbar(group.index, group['time'], fmt=markers[i] + '-', markersize=8, yerr=data.groupby('file_size').std()['time'], label=labelmap[protocol], color=colormap[protocol])
+        i += 1
 
 
     plt.xlim(xmin=0, xmax=50)

@@ -14,14 +14,15 @@ mpl.style.use('seaborn-paper')
 rcParams['figure.figsize'] = 10,8
 # rcParams['savefig.pad_inches'] = 0.5
 rcParams['figure.constrained_layout.use'] = True
-mpl.rcParams['font.size'] =  15.0
+mpl.rcParams['font.size'] =  18.0
 
 import matplotlib.pylab as pylab
 params = {'legend.fontsize': 'x-large',
          'axes.labelsize': 'x-large',
          'axes.titlesize':'x-large',
          'xtick.labelsize':'x-large',
-         'ytick.labelsize':'x-large'}
+         'ytick.labelsize':'x-large',
+         'lines.linewidth': 2.0}
 pylab.rcParams.update(params)
 
 labelmap = {
@@ -32,10 +33,17 @@ labelmap = {
 }
 
 colormap = {
-    'pcc': 'firebrick',
-    'bbr': 'olivedrab',
-    'cubic': 'teal',
-    'hybla' : 'darkorchid'
+    'pcc': 'r',
+    'bbr': 'g',
+    'cubic': 'b',
+    'hybla' : 'm'
+}
+
+markers = {
+    'bbr': 'o', 
+    'cubic': '^',
+    'hybla': 's' ,
+    'pcc': 'D'
 }
 
 # DATA_DIR = './data/2020-05-09/'
@@ -51,9 +59,9 @@ def plot_rtt_cdf(df, column='mean'):
     plt.close()
 
     for protocol, data in df.groupby('protocol'):
-        sorted_rtt = data[column].sort_values().reset_index()
+        sorted_rtt = data[column].sort_values().reset_index()[::2]
         plt.plot(sorted_rtt[column], sorted_rtt.index /
-                 sorted_rtt[column].count() * 100, label=labelmap[protocol], color=colormap[protocol])
+                 sorted_rtt[column].count() * 100, markers[protocol]+'-', label=labelmap[protocol], color=colormap[protocol], markersize=8.0)
 
     plt.legend()
     plt.ylabel("Cumulative Distribution\n(percent)")
@@ -66,10 +74,10 @@ def plot_loss_cdf(df):
 
     print(df.head())
     for protocol, data in df.groupby('protocol'):
-        data = data[data['loss'] < 0.95]
+        data = data[data['loss'] < 0.95][::2]
         sorted_loss = data[column].sort_values().reset_index()
         plt.plot(sorted_loss[column] * 100, sorted_loss.index /
-                 sorted_loss[column].count() * 100, label=labelmap[protocol], color=colormap[protocol])
+                 sorted_loss[column].count() * 100, markers[protocol]+'-', label=labelmap[protocol], color=colormap[protocol], markersize=8.0)
 
     plt.legend()
     plt.ylabel("Cumulative Distribution\n(percent)")
@@ -208,7 +216,8 @@ def rtt_summary(prefix=""):
     PREFIX = prefix
 
     fname = f"{DATA_DIR}/{PREFIX}rtt_quantiles.csv"
-    df = pd.read_csv(fname, index_col=0).dropna(how='all')
+    df = pd.read_csv(fname, index_col=0)
+    print(df['protocol'].unique())
     df['start_time'] = pd.to_datetime(df['start_time'], errors='coerce').dropna()
     df = df.set_index('start_time').sort_index()
     df['start_time'] = df.index
@@ -260,17 +269,17 @@ def loss_summary(prefix=""):
     plt.close()
 
 def main_summary():
-    throughput_summary()
+    # throughput_summary()
     rtt_summary()
-    loss_summary()
+    # loss_summary()
 
-    throughput_summary(prefix="steady_")
+    # throughput_summary(prefix="steady_")
     rtt_summary(prefix="steady_")
-    loss_summary(prefix="steady_")
+    # loss_summary(prefix="steady_")
 
 
 if __name__ == "__main__":
-    # main_summary()
-    summary_statistics()
-    summary_statistics(prefix="steady_")
-    summary_statistics(prefix="startup_")
+    main_summary()
+    # summary_statistics()
+    # summary_statistics(prefix="steady_")
+    # summary_statistics(prefix="startup_")
