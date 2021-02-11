@@ -1,43 +1,48 @@
+import matplotlib.pylab as pylab
+from analyze import *
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from pylab import rcParams
+import math as m
 import matplotlib as mpl
 mpl.use('AGG')
 
-import math as m
-from pylab import rcParams
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
-from analyze import *
-
 
 mpl.style.use('seaborn-paper')
-rcParams['figure.figsize'] = 10,8
-mpl.rcParams['font.size'] =  12.0
+rcParams['figure.figsize'] = 10, 8
+mpl.rcParams['font.size'] = 12.0
 rcParams.update({'figure.autolayout': True})
 plt.tight_layout(pad=0.75)
 
 
-
-import matplotlib.pylab as pylab
 params = {'legend.fontsize': 'x-large',
-         'axes.labelsize': 'x-large',
-         'axes.titlesize':'x-large',
-         'xtick.labelsize':'x-large',
-         'ytick.labelsize':'x-large'}
+          'axes.labelsize': 'x-large',
+          'axes.titlesize': 'x-large',
+          'xtick.labelsize': 'x-large',
+          'ytick.labelsize': 'x-large'}
 pylab.rcParams.update(params)
+mpl.rcParams['font.size'] = 18.0
 
 labelmap = {
     'pcc': 'PCC',
     'bbr': 'BBR',
     'cubic': 'Cubic',
-    'hybla' : 'Hybla'
+    'hybla': 'Hybla'
 }
 
-
 colormap = {
-    'pcc': 'firebrick',
-    'bbr': 'olivedrab',
-    'cubic': 'teal',
-    'hybla' : 'darkorchid'
+    'pcc': 'r',
+    'bbr': 'g',
+    'cubic': 'b',
+    'hybla': 'm'
+}
+
+markers = {
+    'bbr': 'o',
+    'cubic': '^',
+    'hybla': 's',
+    'pcc': 'D'
 }
 
 
@@ -62,7 +67,7 @@ def resample(df, window='1s'):
     return r
 
 
-def single_dataframe_rtt(second_half = False):
+def single_dataframe_rtt(second_half=False):
     all_dataframes = []
     for _local, remote, dir in [i for i in all_pcaps()]:
         try:
@@ -81,7 +86,7 @@ def single_dataframe_rtt(second_half = False):
     return pd.concat(all_dataframes)
 
 
-def single_dataframe_retransmission(second_half = False):
+def single_dataframe_retransmission(second_half=False):
     all_dataframes = []
     for local, _remote, dir in [i for i in all_pcaps()]:
         try:
@@ -111,9 +116,9 @@ def plot_rtt_cdf(df, prefix=""):
     plt.close()
 
     for protocol, data in df.groupby('protocol'):
-        sorted_rtt = data[ack_rtt].sort_values().reset_index()
+        sorted_rtt = data[ack_rtt].sort_values().reset_index()[::10]
         plt.plot(sorted_rtt[ack_rtt], sorted_rtt.index /
-                 sorted_rtt[ack_rtt].count() * 100, label=labelmap[protocol], color=colormap[protocol])
+                 sorted_rtt[ack_rtt].count() * 100, markers[protocol]+'-', label=labelmap[protocol], color=colormap[protocol], markersize=8.0)
 
     plt.legend(loc='lower right')
     plt.ylabel("Percent")
@@ -128,7 +133,7 @@ def plot_retransmission_cdf(df, prefix=""):
     plt.close()
 
     for protocol, data in df.groupby('protocol'):
-        data = data[data['retransmission']  < .95] # filter broken others out
+        data = data[data['retransmission'] < .95]  # filter broken others out
         sorted_rtt = data['retransmission'].sort_values().reset_index()
         plt.plot(sorted_rtt['retransmission'] * 100, sorted_rtt.index /
                  sorted_rtt['retransmission'].count() * 100, label=labelmap[protocol], color=colormap[protocol])
@@ -139,6 +144,7 @@ def plot_retransmission_cdf(df, prefix=""):
     fname = f"{DATA_DIR}/{prefix}retrans.png"
     plt.savefig(fname)
     print('saved', fname)
+
 
 def plot_all():
     all_rtts = single_dataframe_rtt()
